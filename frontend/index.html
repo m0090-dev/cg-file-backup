@@ -1,0 +1,49 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>cg-file-backup</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+
+<div class="container">
+  <div class="selection-info">
+    <p>Selected work file: <span id="selected-workfile">None</span></p>
+    <p>Selected backup folder: <span id="selected-backupdir">Default</span></p>
+  </div>
+<div id="message-area" class="message hidden"></div>
+
+
+
+  <button id="workfile-btn">Select Work File</button>
+  <button id="backupdir-btn">Select Backup Folder</button>
+
+  <!-- バックアップ方法選択 -->
+  <div class="backup-mode">
+    <label>
+      <input type="radio" name="backupMode" value="copy" checked>
+      Create Backup
+    </label>
+    <label>
+      <input type="radio" name="backupMode" value="archive">
+      Create Archive Backup
+    </label>
+  </div>
+
+  <!-- アーカイブ選択時のみ表示 -->
+  <div id="archive-options" class="archive-row hidden">
+    <select id="archive-format">
+      <option value="zip">ZIP</option>
+      <option value="tar">TAR</option>
+    </select>
+  </div>
+
+  <button id="execute-backup-btn">Execute</button>
+</div>
+
+<script src="./src/main.js" type="module"></script>
+</body>
+</html>

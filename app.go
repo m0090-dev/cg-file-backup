@@ -61,6 +61,10 @@ func (a *App) GetLanguage() string {
     return a.cfg.Language
 }
 
+func (a *App) GetAlwaysOnTop() bool {
+	return a.cfg.AlwaysOnTop
+}
+
 
 func (a *App) SetLanguage(lang string) error {
     a.cfg.Language = lang
@@ -81,81 +85,6 @@ func (a *App) GetI18N() map[string]string {
     return a.cfg.I18N[lang]
 }
 
-
-
-func (a *App) setupMenu() *menu.Menu {
-    // Always On Top の初期状態
-    alwaysOnTop := false
-    var alwaysOnTopItem *menu.MenuItem
-
-    // Always On Top
-    alwaysOnTopItem = menu.Checkbox(
-        a.GetLanguageText("alwaysOnTop"),
-        alwaysOnTop,
-        nil,
-        func(_ *menu.CallbackData) {
-            alwaysOnTop = !alwaysOnTop
-            runtime.WindowSetAlwaysOnTop(a.ctx, alwaysOnTop)
-            alwaysOnTopItem.SetChecked(alwaysOnTop)
-        },
-    )
-
-    // Language: English
-    englishItem := menu.Radio(
-        a.GetLanguageText("english"),
-        a.cfg.Language == "en",
-        nil,
-        func(_ *menu.CallbackData) {
-            _ = a.SetLanguage("en")
-            runtime.MessageDialog(a.ctx, runtime.MessageDialogOptions{
-                Title:   a.GetLanguageText("language"),
-                Message: a.GetLanguageText("restartRequired"),
-            })
-        },
-    )
-
-    // Language: Japanese
-    japaneseItem := menu.Radio(
-        a.GetLanguageText("japanese"),
-        a.cfg.Language == "ja",
-        nil,
-        func(_ *menu.CallbackData) {
-            _ = a.SetLanguage("ja")
-            runtime.MessageDialog(a.ctx, runtime.MessageDialogOptions{
-                Title:   a.GetLanguageText("language"),
-                Message: a.GetLanguageText("restartRequired"),
-            })
-        },
-    )
-
-    // Quit
-    quitItem := menu.Text(
-        a.GetLanguageText("quit"),
-        keys.CmdOrCtrl("q"),
-        func(_ *menu.CallbackData) {
-            runtime.Quit(a.ctx)
-        },
-    )
-
-    // Settings Menu
-    settingsMenu := menu.NewMenu()
-    settingsMenu.Items = []*menu.MenuItem{
-        alwaysOnTopItem,
-        menu.Separator(),
-        englishItem,
-        japaneseItem,
-        menu.Separator(),
-        quitItem,
-    }
-
-    // Root Menu
-    rootMenu := menu.NewMenu()
-    rootMenu.Items = []*menu.MenuItem{
-        menu.SubMenu(a.GetLanguageText("settings"), settingsMenu),
-    }
-
-    return rootMenu
-}
 
 func zipBackupFile(src, backupDir string) error {
     if backupDir == "" {
@@ -249,6 +178,113 @@ func tarBackupFile(src, backupDir string) error {
     return err
 }
 
+func (a *App) SetAlwaysOnTop(flag bool) error {
+    // Update config
+    a.cfg.AlwaysOnTop = flag
+
+    // Persist to JSON file
+    data, err := json.MarshalIndent(a.cfg, "", "  ")
+    if err != nil {
+        return err
+    }
+    return os.WriteFile(a.configPath, data, 0644)
+}
+
+func (a *App) setupMenu() *menu.Menu {
+    // Always On Top の初期状態
+    alwaysOnTop := a.GetAlwaysOnTop()
+    var alwaysOnTopItem *menu.MenuItem
+
+    // Always On Top チェックボックス
+    alwaysOnTopItem = menu.Checkbox(
+        a.GetLanguageText("alwaysOnTop"),
+        alwaysOnTop,
+        nil,
+        func(_ *menu.CallbackData) {
+            // 現在状態の反転
+            newValue := !a.GetAlwaysOnTop()
+            // セッターで状態更新とファイル保存
+            _ = a.SetAlwaysOnTop(newValue)
+            // ウィンドウ上の反映
+            runtime.WindowSetAlwaysOnTop(a.ctx, newValue)
+            // チェックボックス更新
+            alwaysOnTopItem.SetChecked(newValue)
+        },
+    )
+
+    // Language: English
+    englishItem := menu.Radio(
+        a.GetLanguageText("english"),
+        a.cfg.Language == "en",
+        nil,
+        func(_ *menu.CallbackData) {
+            _ = a.SetLanguage("en")
+            runtime.MessageDialog(a.ctx, runtime.MessageDialogOptions{
+                Title:   a.GetLanguageText("language"),
+                Message: a.GetLanguageText("restartRequired"),
+            })
+        },
+    )
+
+    // Language: Japanese
+    japaneseItem := menu.Radio(
+        a.GetLanguageText("japanese"),
+        a.cfg.Language == "ja",
+        nil,
+        func(_ *menu.CallbackData) {
+            _ = a.SetLanguage("ja")
+            runtime.MessageDialog(a.ctx, runtime.MessageDialogOptions{
+                Title:   a.GetLanguageText("language"),
+                Message: a.GetLanguageText("restartRequired"),
+            })
+        },
+    )
+
+    // Quit
+    quitItem := menu.Text(
+        a.GetLanguageText("quit"),
+        keys.CmdOrCtrl("q"),
+        func(_ *menu.CallbackData) {
+            runtime.Quit(a.ctx)
+        },
+    )
+
+    // Settings Menu
+    settingsMenu := menu.NewMenu()
+    settingsMenu.Items = []*menu.MenuItem{
+        alwaysOnTopItem,
+        menu.Separator(),
+        englishItem,
+        japaneseItem,
+        menu.Separator(),
+        quitItem,
+    }
+
+    // About Menu
+    aboutMenu := menu.NewMenu()
+    aboutText := menu.Text(
+        a.GetLanguageText("about"),
+        keys.CmdOrCtrl("a"),
+        func(_ *menu.CallbackData) {
+            runtime.MessageDialog(a.ctx, runtime.MessageDialogOptions{
+                Title:   a.GetLanguageText("about"),
+                Message: a.GetLanguageText("aboutText"),
+            })
+        },
+    )
+    aboutMenu.Items = []*menu.MenuItem{
+        aboutText,
+    }
+
+    // Root Menu
+    rootMenu := menu.NewMenu()
+    rootMenu.Items = []*menu.MenuItem{
+        menu.SubMenu(a.GetLanguageText("settings"), settingsMenu),
+        menu.SubMenu(a.GetLanguageText("about"), aboutMenu),
+    }
+
+    return rootMenu
+}
 
 func (a *App) ArchiveBackupFile(src, backupDir, format string) error {
     switch format {

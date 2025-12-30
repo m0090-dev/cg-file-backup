@@ -5,6 +5,8 @@ export function ArchiveBackupFile(arg1:string,arg2:string,arg3:string):Promise<v
 
 export function CopyBackupFile(arg1:string,arg2:string):Promise<void>;
 
+export function GetAlwaysOnTop():Promise<boolean>;
+
 export function GetI18N():Promise<Record<string, string>>;
 
 export function GetLanguage():Promise<string>;
@@ -14,5 +16,7 @@ export function GetLanguageText(arg1:string):Promise<string>;
 export function SelectBackupFolder():Promise<string>;
 
 export function SelectWorkFile():Promise<string>;
+
+export function SetAlwaysOnTop(arg1:boolean):Promise<void>;
 
 export function SetLanguage(arg1:string):Promise<void>;

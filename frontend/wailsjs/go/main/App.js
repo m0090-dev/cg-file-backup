@@ -10,6 +10,10 @@ export function CopyBackupFile(arg1, arg2) {
   return window['go']['main']['App']['CopyBackupFile'](arg1, arg2);
 }
 
+export function GetAlwaysOnTop() {
+  return window['go']['main']['App']['GetAlwaysOnTop']();
+}
+
 export function GetI18N() {
   return window['go']['main']['App']['GetI18N']();
 }
@@ -28,6 +32,10 @@ export function SelectBackupFolder() {
 
 export function SelectWorkFile() {
   return window['go']['main']['App']['SelectWorkFile']();
+}
+
+export function SetAlwaysOnTop(arg1) {
+  return window['go']['main']['App']['SetAlwaysOnTop'](arg1);
 }
 
 export function SetLanguage(arg1) {

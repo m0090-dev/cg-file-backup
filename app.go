@@ -43,7 +43,9 @@ func NewApp() *App {
 func (a *App) startup(ctx context.Context) {
     a.ctx = ctx
 
-fmt.Printf("%#v\n", a.cfg.I18N[a.cfg.Language])
+runtime.WindowSetAlwaysOnTop(a.ctx, a.GetAlwaysOnTop())
+
+//fmt.Printf("%#v\n", a.cfg.I18N[a.cfg.Language])
 }
 
 func (a *App) GetLanguageText(key string) string {

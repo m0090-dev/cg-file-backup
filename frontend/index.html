@@ -10,40 +10,65 @@
 <body>
 
 <div class="container">
-  <div class="selection-info">
-    <p>Selected work file: <span id="selected-workfile">None</span></p>
-    <p>Selected backup folder: <span id="selected-backupdir">Default</span></p>
-  </div>
-<div id="message-area" class="message hidden"></div>
 
-
-
-  <button id="workfile-btn">Select Work File</button>
-  <button id="backupdir-btn">Select Backup Folder</button>
-
-  <!-- バックアップ方法選択 -->
-  <div class="backup-mode">
-    <label>
-      <input type="radio" name="backupMode" value="copy" checked>
-      Create Backup
-    </label>
-    <label>
-      <input type="radio" name="backupMode" value="archive">
-      Create Archive Backup
-    </label>
+  <!-- タブヘッダー -->
+  <div id="tab-headers" class="tab-headers">
+    <button class="tab-link" data-tab="main-tab">Backup</button>
   </div>
 
-  <!-- アーカイブ選択時のみ表示 -->
-  <div id="archive-options" class="archive-row hidden">
-    <select id="archive-format">
-      <option value="zip">ZIP</option>
-      <option value="tar">TAR</option>
-    </select>
-  </div>
+  <!-- タブ内容 -->
+  <div id="tab-contents">
+    <div id="main-tab" class="tab-content">
+      <!-- 選択情報 -->
+      <div class="selection-info">
+        <p>Selected work file: <span id="selected-workfile">None</span></p>
+        <p>Selected backup folder: <span id="selected-backupdir">Default</span></p>
+      </div>
 
-  <button id="execute-backup-btn">Execute</button>
+      <!-- メッセージエリア -->
+      <div id="message-area" class="message hidden"></div>
+
+      <!-- ファイル・フォルダ選択ボタン -->
+      <button id="workfile-btn">Select Work File</button>
+      <button id="backupdir-btn">Select Backup Folder</button>
+
+      <!-- バックアップ方法選択 -->
+      <div class="backup-mode">
+        <label>
+          <input type="radio" name="backupMode" value="copy" checked>
+          Create Backup
+        </label>
+        <label>
+          <input type="radio" name="backupMode" value="archive">
+          Create Archive Backup
+        </label>
+        <label>
+          <input type="radio" name="backupMode" value="diff">
+          Create Diff Backup
+        </label>
+      </div>
+
+      <!-- アーカイブ選択時のみ表示 -->
+      <div id="archive-options" class="archive-row hidden">
+        <select id="archive-format">
+          <option value="zip">ZIP</option>
+          <option value="tar">TAR</option>
+        </select>
+      </div>
+
+      <!-- 差分バックアップ設定ボタン -->
+      <div id="diff-settings-container" class="hidden">
+        <button id="diff-settings-btn">Diff Backup Settings</button>
+      </div>
+
+      <!-- 実行ボタン -->
+      <button id="execute-backup-btn">Execute</button>
+    </div>
+  </div>
 </div>
 
-<script src="./src/main.js" type="module"></script>
+
+<!-- 元のJS読み込み -->
+<script type="module" src="./src/main.js"></script>
 </body>
 </html>

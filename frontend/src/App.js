@@ -1,188 +1,157 @@
-
 import {
   SelectAnyFile,
   SelectBackupFolder,
   CopyBackupFile,
   ArchiveBackupFile,
   GetI18N,
-  CreateDiff,
   BackupOrDiff,
-  ApplyDiff
+  ApplyMultiDiff,
+  GetDiffList
 } from '../wailsjs/go/main/App';
 
 let i18n = {};
 let workFile = '';
 let backupDir = '';
 
-// メッセージ表示
-function ShowMessage(text) {
-  const el = document.getElementById('message-area');
-  el.textContent = text;
-  el.classList.remove('hidden');
-  setTimeout(() => el.classList.add('hidden'), 3000);
-}
-
-// i18nロード
-async function LoadI18NOnce() {
+async function Initialize() {
   i18n = await GetI18N();
-  ApplyI18N();
-
-  const mainTabButton = document.querySelector('.tab-link[data-tab="main-tab"]');
-  if (mainTabButton) mainTabButton.textContent = i18n.copyBackupBtn;
-}
-
-// i18n適用
-function ApplyI18N() {
+  
+  // UIラベルの反映
+  document.querySelector('.action-section h3').textContent = i18n.newBackupTitle;
+  document.querySelector('.history-section h3').textContent = i18n.historyTitle;
   document.getElementById('workfile-btn').textContent = i18n.workFileBtn;
   document.getElementById('backupdir-btn').textContent = i18n.backupDirBtn;
   document.getElementById('execute-backup-btn').textContent = i18n.executeBtn;
+  document.getElementById('refresh-diff-btn').textContent = i18n.refreshBtn;
+  document.getElementById('apply-selected-btn').textContent = i18n.applyBtn;
 
-  const diffSettingsBtn = document.getElementById('diff-settings-btn');
-  if (diffSettingsBtn) diffSettingsBtn.textContent = i18n.diffBackupBtn;
+  // 全選択ボタンが存在する場合のみラベルを適用
+  const selectAllBtn = document.getElementById('select-all-btn');
+  if (selectAllBtn) {
+    selectAllBtn.textContent = i18n.selectAllBtn || "Select All";
+  }
 
-  document.querySelector('input[value="copy"]').parentElement.lastChild.textContent = ' ' + i18n.copyBackupBtn;
-  document.querySelector('input[value="archive"]').parentElement.lastChild.textContent = ' ' + i18n.archiveBtn;
-  document.querySelector('input[value="diff"]').parentElement.lastChild.textContent = ' ' + i18n.diffBackupBtn;
+  const titles = document.querySelectorAll('.mode-title');
+  const descs = document.querySelectorAll('.mode-desc');
+  if (titles[0]) titles[0].textContent = i18n.fullCopyTitle;
+  if (descs[0]) descs[0].textContent = i18n.fullCopyDesc;
+  if (titles[1]) titles[1].textContent = i18n.archiveTitle;
+  if (descs[1]) descs[1].textContent = i18n.archiveDesc;
+  if (titles[2]) titles[2].textContent = i18n.diffTitle;
+  if (descs[2]) descs[2].textContent = i18n.diffDesc;
 
-  UpdateSelectionInfo();
+  UpdateDisplay();
 }
 
-// 選択情報更新
-function UpdateSelectionInfo() {
-  document.getElementById('selected-workfile').textContent = workFile || i18n.selectedWorkFile;
-  document.getElementById('selected-backupdir').textContent = backupDir || i18n.selectedBackupDir;
+function UpdateDisplay() {
+  const fileEl = document.getElementById('selected-workfile');
+  const dirEl = document.getElementById('selected-backupdir');
+  fileEl.textContent = workFile ? workFile.split(/[\\/]/).pop() : i18n.selectedWorkFile;
+  fileEl.title = workFile;
+  dirEl.textContent = backupDir ? "Custom Path" : i18n.selectedBackupDir;
+  dirEl.title = backupDir || "Default";
 }
 
-// ファイル選択
-async function SelectWorkFileJS() {
-  const path = await SelectAnyFile("Select Work File", [{ DisplayName: "CG Work Files", Pattern: "*.clip;*.kra;*.psd" }]);
-  if (path) workFile = path;
-  UpdateSelectionInfo();
+async function UpdateHistory() {
+  const list = document.getElementById('diff-history-list');
+  if (!workFile) {
+    list.innerHTML = `<div class="info-msg">${i18n.selectFileFirst}</div>`;
+    return;
+  }
+
+  try {
+    const data = await GetDiffList(workFile, backupDir);
+    if (!data || data.length === 0) {
+      list.innerHTML = `<div class="info-msg">${i18n.noHistory}</div>`;
+      return;
+    }
+    data.sort((a, b) => b.fileName.localeCompare(a.fileName));
+    list.innerHTML = data.map(item => `
+      <div class="diff-item">
+        <label style="display:flex; align-items:center; cursor:pointer; width:100%;">
+          <input type="checkbox" class="diff-checkbox" value="${item.filePath}" style="margin-right:10px;">
+          <div style="display:flex; flex-direction:column; flex:1; overflow:hidden;">
+            <span class="diff-name" title="${item.fileName}" style="font-weight:bold; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${item.fileName}</span>
+            <span class="diff-ts" style="font-size:10px; color:#666;">Time: ${item.timestamp}</span>
+          </div>
+        </label>
+      </div>
+    `).join('');
+  } catch (err) { console.error(err); }
 }
 
-// バックアップフォルダ選択
-async function SelectBackupFolderJS() {
-  const path = await SelectBackupFolder();
-  if (path) backupDir = path;
-  UpdateSelectionInfo();
-}
-
-// バックアップモードUI切替
-function UpdateBackupModeUI() {
+async function OnExecute() {
+  if (!workFile) { alert(i18n.selectFileFirst); return; }
   const mode = document.querySelector('input[name="backupMode"]:checked').value;
-  document.getElementById('archive-options').classList.toggle('hidden', mode !== 'archive');
-  document.getElementById('diff-settings-container').classList.toggle('hidden', mode !== 'diff');
-}
+  const msgArea = document.getElementById('message-area');
 
-// タブ切替
-function SwitchTab(tabId) {
-  document.querySelectorAll('.tab-link').forEach(btn => btn.classList.remove('active'));
-  document.querySelectorAll('.tab-content').forEach(tab => {
-    tab.style.display = (tab.id === tabId ? 'block' : 'none');
-    tab.classList.toggle('active', tab.id === tabId);
-  });
-  const btn = document.querySelector(`.tab-link[data-tab="${tabId}"]`);
-  if (btn) btn.classList.add('active');
-}
+  try {
+    let successText = "";
+    if (mode === 'copy') {
+      await CopyBackupFile(workFile, backupDir);
+      successText = i18n.copyBackupSuccess;
+    } else if (mode === 'archive') {
+      const fmt = document.getElementById('archive-format').value;
+      await ArchiveBackupFile(workFile, backupDir, fmt);
+      successText = i18n.archiveBackupSuccess.replace('{format}', fmt.toUpperCase());
+    } else if (mode === 'diff') {
+      await BackupOrDiff(workFile, backupDir);
+      successText = i18n.diffBackupSuccess;
+    }
 
-// タブ閉じる
-function CloseTab(tabId) {
-  if (tabId === 'main-tab') return;
-  const tabHeader = document.querySelector(`.tab-link[data-tab="${tabId}"]`);
-  const tabContent = document.getElementById(tabId);
-  if (tabHeader) tabHeader.remove();
-  if (tabContent) tabContent.remove();
-  SwitchTab('main-tab');
-}
-
-// 差分設定タブ作成
-function OpenDiffSettingsTab() {
-  const tabId = 'diff-settings-tab';
-  if (document.getElementById(tabId)) { SwitchTab(tabId); return; }
-
-  const tabHeaders = document.getElementById('tab-headers');
-  const newHeader = document.createElement('button');
-  newHeader.className = 'tab-link';
-  newHeader.dataset.tab = tabId;
-  newHeader.textContent = i18n.diffBackupBtn;
-  newHeader.addEventListener('contextmenu', e => { e.preventDefault(); CloseTab(tabId); });
-  newHeader.onclick = () => SwitchTab(tabId);
-  tabHeaders.appendChild(newHeader);
-
-  const tabContents = document.getElementById('tab-contents');
-  const newTab = document.createElement('div');
-  newTab.id = tabId;
-  newTab.className = 'tab-content';
-  newTab.style.display = 'none';
-  newTab.innerHTML = `
-    <h3>${i18n.diffBackupBtn}</h3>
-    <label><input type="radio" name="diffMode" value="diff" checked> ${i18n.diffMode}</label>
-    <label><input type="radio" name="diffMode" value="incremental"> ${i18n.incrementalMode}</label>
-    <br>
-    <label><input type="checkbox" id="compress-diff"> ${i18n.compressDiff}</label>
-    <br><br>
-    <button id="apply-diff-btn">${i18n.applyDiffBtn || "Apply Diff"}</button>
-  `;
-  tabContents.appendChild(newTab);
-
-  document.getElementById('apply-diff-btn').onclick = ExecuteDiffApplyJS;
-
-  SwitchTab(tabId);
-}
-
-// バックアップ実行
-async function ExecuteBackupJS() {
-  if (!workFile) { ShowMessage(i18n.selectedWorkFile); return; }
-
-  const mode = document.querySelector('input[name="backupMode"]:checked').value;
-
-  if (mode === 'copy') {
-    CopyBackupFile(workFile, backupDir)
-      .then(() => ShowMessage(i18n.copyBackupSuccess))
-      .catch(err => alert(err));
-  } else if (mode === 'archive') {
-    const format = document.getElementById('archive-format').value;
-    ArchiveBackupFile(workFile, backupDir, format)
-      .then(() => ShowMessage(i18n.archiveBackupSuccess.replace('{format}', format.toUpperCase())))
-      .catch(err => alert(err));
-  } else if (mode === 'diff') {
-    const diffMode = document.querySelector('input[name="diffMode"]:checked')?.value || 'diff';
-    const compress = document.getElementById('compress-diff')?.checked || false;
-
-    BackupOrDiff(workFile, backupDir, diffMode, compress)
-      .then(() => ShowMessage(i18n.diffBackupSuccess))
-      .catch(err => alert(err));
+    msgArea.textContent = successText;
+    msgArea.classList.remove('hidden');
+    setTimeout(() => msgArea.classList.add('hidden'), 3000);
+    
+    UpdateHistory();
+  } catch (err) {
+    alert(err);
   }
 }
 
-// 差分適用（汎用ファイル選択ダイアログ使用）
-async function ExecuteDiffApplyJS() {
-  // Diffファイル選択
-  const selectedDiff = await SelectAnyFile("Select Diff File", [{ DisplayName: "Diff Files", Pattern: "*.diff" }]);
-  if (!selectedDiff) return;
-
-  // 出力先ファイル選択
-  const outputFile = await SelectAnyFile("Select Output File", [{ DisplayName: "Output File", Pattern: "*" }]);
-  if (!outputFile) return;
-
-  ApplyDiff(workFile, selectedDiff, outputFile)
-    .then(() => ShowMessage(i18n.diffApplySuccess || "Diff applied successfully"))
-    .catch(err => alert(err));
-}
-
-// 初期化
 document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('workfile-btn').onclick = SelectWorkFileJS;
-  document.getElementById('backupdir-btn').onclick = SelectBackupFolderJS;
-  document.getElementById('execute-backup-btn').onclick = ExecuteBackupJS;
-  document.getElementById('diff-settings-btn').onclick = OpenDiffSettingsTab;
+  Initialize();
 
-  document.querySelectorAll('input[name="backupMode"]').forEach(radio => radio.addEventListener('change', UpdateBackupModeUI));
+  // 安全なイベント登録（要素が存在するかチェックしてから登録）
+  const selectAllBtn = document.getElementById('select-all-btn');
+  if (selectAllBtn) {
+    selectAllBtn.onclick = () => {
+      const checkboxes = document.querySelectorAll('.diff-checkbox');
+      const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+      checkboxes.forEach(cb => cb.checked = !allChecked);
+    };
+  }
 
-  const mainTabButton = document.querySelector('.tab-link[data-tab="main-tab"]');
-  if (mainTabButton) mainTabButton.onclick = () => SwitchTab('main-tab');
+  document.getElementById('workfile-btn').onclick = async () => {
+    const res = await SelectAnyFile(i18n.workFileBtn, [{ DisplayName: "Target", Pattern: "*.*" }]);
+    if (res) { workFile = res; UpdateDisplay(); UpdateHistory(); }
+  };
 
-  UpdateBackupModeUI();
-  LoadI18NOnce();
-  SwitchTab('main-tab');
-});
+  document.getElementById('backupdir-btn').onclick = async () => {
+    const res = await SelectBackupFolder();
+    if (res) { backupDir = res; UpdateDisplay(); UpdateHistory(); }
+  };
+
+  document.getElementById('execute-backup-btn').onclick = OnExecute;
+  document.getElementById('refresh-diff-btn').onclick = UpdateHistory;
+
+  document.getElementById('apply-selected-btn').onclick = async () => {
+    const targets = Array.from(document.querySelectorAll('.diff-checkbox:checked')).map(el => el.value);
+    if (targets.length > 0 && confirm(i18n.restoreConfirm)) {
+      await ApplyMultiDiff(workFile, targets);
+      alert(i18n.diffApplySuccess);
+    }
+  };
+
+  document.querySelectorAll('input[name="backupMode"]').forEach(radio => {
+    radio.onchange = (e) => {
+      const isDiff = e.target.value === 'diff';
+      const history = document.getElementById('history-section');
+      if (history) {
+        history.style.opacity = isDiff ? "1" : "0.4";
+        history.style.pointerEvents = isDiff ? "auto" : "none";
+      }
+      if (isDiff) UpdateHistory();
+    };
+  });
+});

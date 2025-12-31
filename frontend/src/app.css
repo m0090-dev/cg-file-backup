@@ -1,181 +1,253 @@
-
-/* -------------------------
-   コンテナ・全体
-------------------------- */
+/* --- ベース設定 --- */
+body, html {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden; 
+    background-color: #1B2636;
+    user-select: none;
+    }
+
 .container {
-  max-width: 600px;
-  margin: 20px auto;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background-color: #f0f2f5;
 }
 
-/* -------------------------
-   選択情報
-------------------------- */
-.selection-info {
-  min-height: 60px;
-  padding: 12px 16px;
-  background-color: #1B2636;
-  color: #ffffff;
-  border-radius: 8px;
-  font-size: 14px;
-  word-break: break-word;
+/* --- 上部ステータスパネル --- */
+.status-panel {
+    padding: 10px 15px;
+    background-color: #1B2636;
+    color: #ffffff;
+    font-size: 11px;
+    border-bottom: 2px solid #3B5998;
+    flex-shrink: 0;
 }
 
-.selection-info p {
-  margin: 4px 0;
+.info-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    margin-bottom: 2px;
 }
 
-/* -------------------------
-   バックアップモード
-------------------------- */
-.backup-mode {
-  display: flex;
-  gap: 20px;
-  font-size: 14px;
+.info-row strong { color: #8db5ff; min-width: 50px; }
+
+#selected-workfile, #selected-backupdir {
+    text-overflow: ellipsis;
+    overflow: hidden;
+    color: #eee;
+    flex: 1;
 }
 
-.archive-row {
-  display: flex;
-  gap: 10px;
+.mini-btn {
+    padding: 2px 8px;
+    background-color: #3B5998;
+    color: white;
+    border: none;
+    font-size: 10px;
+    border-radius: 4px;
+    cursor: pointer;
 }
 
-.hidden {
-  display: none;
+/* --- メインコンテンツ --- */
+.main-grid {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 15px;
+    padding: 15px;
+    flex: 1;
+    background-color: #fff;
+    min-height: 0;
 }
 
-/* -------------------------
-   ボタン
-------------------------- */
-button {
-  padding: 10px;
-  font-size: 14px;
-  border-radius: 6px;
-  border: none;
-  background-color: #3B5998;
-  color: #ffffff;
-  cursor: pointer;
+.action-section, .history-section {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
 }
 
-button:hover {
-  background-color: #5b7ebc;
+h3 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    border-left: 4px solid #3B5998;
+    padding-left: 10px;
+    color: #1a1a1a;
+    flex-shrink: 0;
 }
 
-/* -------------------------
-   メッセージ
-------------------------- */
-.message {
-  padding: 10px 14px;
-  background-color: #2f8f5b;
-  color: #ffffff;
-  border-radius: 6px;
-  font-size: 13px;
+/* --- バックアップモード選択 (修正箇所: 視認性大幅アップ) --- */
+.backup-mode-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex-shrink: 0;
 }
 
-.message.hidden {
-  display: none;
+.mode-card {
+    display: flex !important;
+    flex-wrap: wrap; /* セレクトボックスがはみ出さないように */
+    align-items: center;
+    padding: 12px;
+    border: 2px solid #ddd; /* 枠線を少し太く */
+    border-radius: 8px;
+    cursor: pointer;
+    background-color: #fff;
+    transition: all 0.2s ease;
 }
 
-/* -------------------------
-   タブ
-------------------------- */
-/* タブヘッダー全体 */
-.tab-headers {
-  display: flex;
-  border-bottom: 1px solid #999;
-  background-color: #ddd;
-  padding-left: 8px;
+/* ラジオボタンがチェックされているカードのスタイル */
+.mode-card:has(input:checked) {
+    border-color: #3B5998;
+    background-color: #f0f7ff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-/* タブボタン */
-.tab-link {
-  padding: 8px 16px;
-  cursor: pointer;
-  border: 1px solid #999;
-  border-bottom: none; /* タブ内容とつなげる */
-  border-top-left-radius: 6px;
-  border-top-right-radius: 6px;
-  background-color: #ccc;
-  color: #333;
-  margin-right: 2px;
-  font-size: 14px;
-  position: relative;
-  top: 2px; /* 非アクティブタブを少し下げる */
-  transition: background-color 0.2s, top 0.2s;
+.mode-card:hover {
+    border-color: #3B5998;
+    background-color: #f9fbff;
 }
 
-.tab-link:hover {
-  background-color: #bbb;
+.mode-card input[type="radio"] {
+    margin-right: 12px;
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
 }
 
-.tab-link.active {
-  background-color: #fff;
-  color: #000;
-  font-weight: bold;
-  top: 0;
-  z-index: 2;
-  border-color: #999;
-  border-bottom-color: #fff;
+/* 「フルコピー」「アーカイブ」などの文字 */
+.mode-title {
+    font-size: 13px;
+    font-weight: 800; /* より太く */
+    color: #111;      /* 真っ黒に近い色で読みやすく */
 }
 
-/* タブ内容 */
-.tab-content {
-  display: none;
-  padding: 16px;
-  border: 1px solid #999;
-  background-color: #fff;
-  margin-top: -1px;
-  position: relative;
-  z-index: 1;
+/* 補足説明（もしHTMLにある場合） */
+.mode-desc {
+    display: block; /* 非表示から表示へ */
+    font-size: 10px;
+    color: #555;    /* 読みやすいグレー */
+    margin-top: 2px;
+    width: 100%;
+    padding-left: 28px; /* ラジオボタンの分だけずらす */
 }
 
-.tab-content.active {
-  display: block;
+.mini-select {
+    margin-left: auto;
+    font-size: 11px;
+    padding: 3px 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: #fff;
+    color: #333;
 }
 
-/* -------------------------
-   タブ内フォーム（ラジオ・チェック・セレクト）
-------------------------- */
-.tab-content input[type="radio"],
-.tab-content input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  margin-right: 6px;
-  cursor: pointer;
-  vertical-align: middle;
+/* --- 履歴リスト --- */
+.history-container {
+    flex: 1;
+    overflow-y: auto;
+    border: 1px solid #bbb;
+    border-radius: 4px;
+    background-color: #fff;
+    min-height: 0;
 }
 
-.tab-content label {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-right: 12px;
-  font-size: 14px;
-  color: #000; /* 見やすい黒に統一 */
+.info-msg {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 20px;
+    color: #222; /* 濃く */
+    font-size: 13px;
+    font-weight: bold;
+    background-color: #f8f9fa;
 }
 
-#diff-settings-tab {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  color: #000; /* 全体文字色を濃く */
+.diff-item {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    font-size: 12px;
 }
 
-#diff-settings-tab h3 {
-  margin-bottom: 8px;
-  font-size: 16px;
-  font-weight: bold;
-  color: #000;
+.diff-item:hover { background-color: #f0f7ff; }
+
+.diff-ts { 
+    font-weight: bold; 
+    color: #3B5998; 
+    margin-right: 10px;
+    font-family: 'Courier New', Courier, monospace;
 }
 
-#diff-settings-tab select {
-  width: 120px;
-  padding: 6px 10px;
-  border-radius: 6px;
-  border: 1px solid #999;
-  background-color: #f0f0f0;
-  cursor: pointer;
-  font-size: 14px;
-  color: #000; /* 選択文字も濃く */
+.diff-name {
+    color: #000; /* ファイル名は黒でくっきり */
+    word-break: break-all;
 }
+
+/* --- 下部ボタン・オプション --- */
+.config-option {
+    margin-top: auto; 
+    padding: 12px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    color: #000; /* 黒に */
+    font-weight: bold;
+}
+
+.execute-btn {
+    margin-top: 5px; 
+    height: 55px; /* 少し高く */
+    background-color: #2f8f5b;
+    color: white;
+    border: none;
+    font-weight: 900;
+    font-size: 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    flex-shrink: 0;
+    box-shadow: 0 2px 0 #1e5c3a; /* 立体感 */
+}
+
+.execute-btn:active {
+    transform: translateY(2px);
+    box-shadow: none;
+}
+
+.history-controls {
+    display: flex;
+    gap: 8px;
+    padding-top: 10px;
+    flex-shrink: 0;
+}
+
+.history-controls button {
+    flex: 1;
+    padding: 10px;
+    font-size: 12px;
+    background-color: #3B5998;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.primary-btn { background-color: #e67e22 !important; }
+
+/* --- 通知 --- */
+#message-area {
+    padding: 10px;
+    background-color: #2f8f5b;
+    color: #fff;
+    font-size: 13px;
+    text-align: center;
+    font-weight: bold;
+}
+
+.hidden { display: none; }

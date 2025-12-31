@@ -1,78 +1,82 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>cg-file-backup</title>
+  <title>CG File Backup Pro</title>
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
 
 <div class="container">
-
-  <!-- タブヘッダー -->
   <div id="tab-headers" class="tab-headers">
-    <button class="tab-link" data-tab="main-tab">Backup</button>
+    <button class="tab-link active" data-tab="main-tab">Dashboard</button>
   </div>
 
-  <!-- タブ内容 -->
   <div id="tab-contents">
-    <div id="main-tab" class="tab-content">
-      <!-- 選択情報 -->
-      <div class="selection-info">
-        <p>Selected work file: <span id="selected-workfile">None</span></p>
-        <p>Selected backup folder: <span id="selected-backupdir">Default</span></p>
+    <div id="main-tab" class="tab-content active">
+      
+      <div class="status-panel">
+        <div class="info-row">
+          <strong>Target:</strong> <span id="selected-workfile">Not Selected</span>
+          <button id="workfile-btn" class="mini-btn">Change</button>
+        </div>
+        <div class="info-row">
+          <strong>Location:</strong> <span id="selected-backupdir">Default Folder</span>
+          <button id="backupdir-btn" class="mini-btn">Change</button>
+        </div>
       </div>
 
-      <!-- メッセージエリア -->
       <div id="message-area" class="message hidden"></div>
 
-      <!-- ファイル・フォルダ選択ボタン -->
-      <button id="workfile-btn">Select Work File</button>
-      <button id="backupdir-btn">Select Backup Folder</button>
+      <div class="main-grid">
+        <div class="action-section">
+          <h3>Create New Backup</h3>
+          <div class="backup-mode-selector">
+            <label class="mode-card">
+              <input type="radio" name="backupMode" value="copy" checked>
+              <div class="mode-info">
+                <span class="mode-title">Full Copy</span>
+                <span class="mode-desc">Standard .clip backup</span>
+              </div>
+            </label>
 
-      <!-- バックアップ方法選択 -->
-      <div class="backup-mode">
-        <label>
-          <input type="radio" name="backupMode" value="copy" checked>
-          Create Backup
-        </label>
-        <label>
-          <input type="radio" name="backupMode" value="archive">
-          Create Archive Backup
-        </label>
-        <label>
-          <input type="radio" name="backupMode" value="diff">
-          Create Diff Backup
-        </label>
-      </div>
+            <label class="mode-card">
+              <input type="radio" name="backupMode" value="archive">
+              <div class="mode-info">
+                <span class="mode-title">Archive</span>
+                <span class="mode-desc">Compressed (ZIP/TAR)</span>
+                <select id="archive-format" class="mini-select">
+                  <option value="zip">ZIP</option>
+                  <option value="tar">TAR</option>
+                </select>
+              </div>
+            </label>
 
-      <!-- アーカイブ選択時のみ表示 -->
-      <div id="archive-options" class="archive-row hidden">
-        <select id="archive-format">
-          <option value="zip">ZIP</option>
-          <option value="tar">TAR</option>
-        </select>
-      </div>
+            <label class="mode-card">
+              <input type="radio" name="backupMode" value="diff">
+              <div class="mode-info">
+                <span class="mode-title">Diff (Smart)</span>
+                <span class="mode-desc">Save only changes</span>
+              </div>
+            </label>
+          </div>
+          
+          <button id="execute-backup-btn" class="execute-btn">Execute Backup</button>
+        </div>
 
-      <!-- 差分バックアップ設定ボタン -->
-      <div id="diff-settings-container" class="hidden">
-        <button id="diff-settings-btn">Diff Backup Settings</button>
-      </div>
-
-<button id="apply-diff-main-btn" style="display:none;">Apply Diff</button>
-
-
-      <!-- 実行ボタン -->
-      <button id="execute-backup-btn">Execute</button>
-    </div>
-
-    <!-- 差分設定タブは JS で動的生成されます -->
-  </div>
-</div>
-
-<!-- JS 読み込み -->
-<script type="module" src="./src/main.js"></script>
+        <div id="history-section" class="history-section">
+          <h3>Backup History / Restore</h3>
+          <div id="diff-history-list" class="history-container">
+            <div class="info-msg">Select "Diff" mode to view history</div>
+          </div>
+          
+          <div class="history-controls">
+            <button id="select-all-btn">Select All</button>
+            <button id="refresh-diff-btn">Refresh List</button>
+            <button id="apply-selected-btn" class="primary-btn">Apply Selected</button>
+          </div>
+        </div>
+      </div> </div> </div> </div> <script type="module" src="./src/main.js"></script>
 </body>
 </html>

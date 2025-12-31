@@ -6,7 +6,9 @@ import "encoding/json"
 type AppConfig struct {
     Language string                         `json:"language"`
     AlwaysOnTop bool  			    `json:"alwaysOnTop"`
+    AutoOpen bool 			    `json:"autoOpen"`
     I18N     map[string]map[string]string  `json:"i18n"`
+
 }
 
 

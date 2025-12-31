@@ -1,49 +1,82 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>cg-file-backup</title>
+  <title>CG File Backup Pro</title>
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
 
 <div class="container">
-  <div class="selection-info">
-    <p>Selected work file: <span id="selected-workfile">None</span></p>
-    <p>Selected backup folder: <span id="selected-backupdir">Default</span></p>
-  </div>
-<div id="message-area" class="message hidden"></div>
-
-
-
-  <button id="workfile-btn">Select Work File</button>
-  <button id="backupdir-btn">Select Backup Folder</button>
-
-  <!-- バックアップ方法選択 -->
-  <div class="backup-mode">
-    <label>
-      <input type="radio" name="backupMode" value="copy" checked>
-      Create Backup
-    </label>
-    <label>
-      <input type="radio" name="backupMode" value="archive">
-      Create Archive Backup
-    </label>
+  <div id="tab-headers" class="tab-headers">
+    <button class="tab-link active" data-tab="main-tab">Dashboard</button>
   </div>
 
-  <!-- アーカイブ選択時のみ表示 -->
-  <div id="archive-options" class="archive-row hidden">
-    <select id="archive-format">
-      <option value="zip">ZIP</option>
-      <option value="tar">TAR</option>
-    </select>
-  </div>
+  <div id="tab-contents">
+    <div id="main-tab" class="tab-content active">
+      
+      <div class="status-panel">
+        <div class="info-row">
+          <strong>Target:</strong> <span id="selected-workfile">Not Selected</span>
+          <button id="workfile-btn" class="mini-btn">Change</button>
+        </div>
+        <div class="info-row">
+          <strong>Location:</strong> <span id="selected-backupdir">Default Folder</span>
+          <button id="backupdir-btn" class="mini-btn">Change</button>
+        </div>
+      </div>
 
-  <button id="execute-backup-btn">Execute</button>
-</div>
+      <div id="message-area" class="message hidden"></div>
 
-<script src="./src/main.js" type="module"></script>
+      <div class="main-grid">
+        <div class="action-section">
+          <h3>Create New Backup</h3>
+          <div class="backup-mode-selector">
+            <label class="mode-card">
+              <input type="radio" name="backupMode" value="copy" checked>
+              <div class="mode-info">
+                <span class="mode-title">Full Copy</span>
+                <span class="mode-desc">Standard .clip backup</span>
+              </div>
+            </label>
+
+            <label class="mode-card">
+              <input type="radio" name="backupMode" value="archive">
+              <div class="mode-info">
+                <span class="mode-title">Archive</span>
+                <span class="mode-desc">Compressed (ZIP/TAR)</span>
+                <select id="archive-format" class="mini-select">
+                  <option value="zip">ZIP</option>
+                  <option value="tar">TAR</option>
+                </select>
+              </div>
+            </label>
+
+            <label class="mode-card">
+              <input type="radio" name="backupMode" value="diff">
+              <div class="mode-info">
+                <span class="mode-title">Diff (Smart)</span>
+                <span class="mode-desc">Save only changes</span>
+              </div>
+            </label>
+          </div>
+          
+          <button id="execute-backup-btn" class="execute-btn">Execute Backup</button>
+        </div>
+
+        <div id="history-section" class="history-section">
+          <h3>Backup History / Restore</h3>
+          <div id="diff-history-list" class="history-container">
+            <div class="info-msg">Select "Diff" mode to view history</div>
+          </div>
+          
+          <div class="history-controls">
+            <button id="select-all-btn">Select All</button>
+            <button id="refresh-diff-btn">Refresh List</button>
+            <button id="apply-selected-btn" class="primary-btn">Apply Selected</button>
+          </div>
+        </div>
+      </div> </div> </div> </div> <script type="module" src="./src/main.js"></script>
 </body>
 </html>

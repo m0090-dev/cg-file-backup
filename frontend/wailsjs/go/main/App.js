@@ -38,6 +38,10 @@ export function GetDiffList(arg1, arg2) {
   return window['go']['main']['App']['GetDiffList'](arg1, arg2);
 }
 
+export function GetFileSize(arg1) {
+  return window['go']['main']['App']['GetFileSize'](arg1);
+}
+
 export function GetI18N() {
   return window['go']['main']['App']['GetI18N']();
 }

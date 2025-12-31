@@ -21,6 +21,8 @@ export function GetConfig():Promise<main.AppConfig>;
 
 export function GetDiffList(arg1:string,arg2:string):Promise<Array<main.DiffFileInfo>>;
 
+export function GetFileSize(arg1:string):Promise<number>;
+
 export function GetI18N():Promise<Record<string, string>>;
 
 export function GetLanguageText(arg1:string):Promise<string>;

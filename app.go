@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"archive/tar"
 	"archive/zip"
 	"compress/gzip"
@@ -48,6 +49,23 @@ func NewApp() *App {
 		configPath: path,
 	}
 }
+func (a *App) GetFileSize(path string) (int64, error) {
+	if path == "" {
+		return 0, fmt.Errorf("path is empty")
+	}
+
+	info, err := os.Stat(path)
+	if err != nil {
+		return 0, err
+	}
+
+	if info.IsDir() {
+		return 0, fmt.Errorf("path is a directory")
+	}
+
+	return info.Size(), nil
+}
+
 
 // ----------------- UI / 設定 / メニュー -----------------
 

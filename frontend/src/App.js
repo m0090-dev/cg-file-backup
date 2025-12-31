@@ -1,4 +1,3 @@
-
 import {
   SelectAnyFile,
   SelectBackupFolder,
@@ -41,7 +40,6 @@ async function Initialize() {
   if (!data) return;
   i18n = data;
 
-  // 静的テキスト反映
   const setText = (id, text) => {
     const el = document.getElementById(id);
     if (el) el.textContent = text;
@@ -69,7 +67,6 @@ async function Initialize() {
   }
 
   UpdateDisplay();
-  // 初期メッセージの強制設定は削除（ご要望通り）
 }
 
 function UpdateDisplay() {
@@ -100,7 +97,6 @@ function UpdateDisplay() {
     }
   }
 
-  // 100MB制限
   const diffRadio = document.querySelector('input[value="diff"]');
   const diffLabel = diffRadio?.closest('label');
   if (workFileSize > MAX_DIFF_SIZE) {
@@ -145,12 +141,12 @@ async function UpdateHistory() {
     list.innerHTML = data.map(item => `
       <div class="diff-item">
         <label style="display:flex; align-items:center; cursor:pointer; width:100%;">
-          <input type="checkbox" class="diff-checkbox" value="${item.filePath}" style="margin-right:10px;">
-          <div style="display:flex; flex-direction:column; flex:1; overflow:hidden;">
+          <input type="checkbox" class="diff-checkbox" value="${item.filePath}" style="margin-right:10px; flex-shrink:0;">
+          <div style="display:flex; flex-direction:column; flex:1; min-width:0;">
             <span class="diff-name" title="${item.fileName}" style="font-weight:bold; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                ${item.fileName} <span style="font-weight:normal; font-size:11px; color:#0078d4;">(${formatSize(item.fileSize)})</span>
+                ${item.fileName} <span style="font-weight:normal; font-size:10px; color:#0078d4;">(${formatSize(item.fileSize)})</span>
             </span>
-            <span class="diff-ts" style="font-size:10px; color:#666;">Time: ${item.timestamp}</span>
+            <span style="font-size:10px; color:#666;">Time: ${item.timestamp}</span>
           </div>
         </label>
       </div>
@@ -182,6 +178,12 @@ window.addEventListener('click', async (e) => {
     OnExecute();
   } else if (id === 'refresh-diff-btn') {
     UpdateHistory();
+  } else if (id === 'select-all-btn') {
+    // 全て選択ボタン
+    const checkboxes = document.querySelectorAll('.diff-checkbox');
+    if (checkboxes.length === 0) return;
+    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+    checkboxes.forEach(cb => cb.checked = !allChecked);
   } else if (id === 'apply-selected-btn') {
     const targets = Array.from(document.querySelectorAll('.diff-checkbox:checked')).map(el => el.value);
     if (targets.length > 0 && confirm(i18n.restoreConfirm)) {
@@ -201,7 +203,6 @@ document.addEventListener('change', (e) => {
 
 async function OnExecute() {
   if (!workFile) { alert(i18n.selectFileFirst); return; }
-
   const mode = document.querySelector('input[name="backupMode"]:checked').value;
   const msgArea = document.getElementById('message-area');
 

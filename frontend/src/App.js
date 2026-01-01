@@ -5,8 +5,8 @@ import {
   ArchiveBackupFile,
   GetI18N,
   BackupOrDiff,
-  ApplyMultiDiff,
-  GetDiffList,
+  GetBackupList,  // 名称変更に対応
+  RestoreBackup,   // 新設の万能復元関数
   GetFileSize
 } from '../wailsjs/go/main/App';
 
@@ -29,10 +29,6 @@ function formatSize(bytes) {
 function setHistoryMessage(msg) {
   const list = document.getElementById('diff-history-list');
   if (!list) return;
-  if (!i18n) {
-    list.innerHTML = '';
-    return;
-  }
   list.innerHTML = `<div class="info-msg">${msg}</div>`;
 }
 
@@ -104,13 +100,13 @@ async function Initialize() {
   }
 
   UpdateDisplay();
+  UpdateHistory();
 }
 
 // --- 表示更新 ---
 function UpdateDisplay() {
   if (!i18n) return;
 
-  const activeEl = document.activeElement;
   const fileEl = document.getElementById('selected-workfile');
   const dirEl = document.getElementById('selected-backupdir');
 
@@ -136,7 +132,6 @@ function UpdateDisplay() {
     }
   });
 
-  // アーカイブパスワード入力欄の活性・非活性制御
   const archiveFmt = document.getElementById('archive-format')?.value;
   const pwdInput = document.getElementById('archive-password');
   const pwdArea = document.getElementById('password-area');
@@ -146,18 +141,16 @@ function UpdateDisplay() {
     pwdArea.style.opacity = isPassMode ? "1" : "0.3";
   }
 
+  // バックアップ履歴セクションは常時活性
   const history = document.getElementById('history-section');
   if (history) {
-    const isDiff = currentMode === 'diff';
-    history.style.opacity = isDiff ? "1" : "0.4";
-    history.style.pointerEvents = isDiff ? "auto" : "none";
-    if (!isDiff) setHistoryMessage(i18n.selectDiffModeMsg);
+    history.style.opacity = "1";
+    history.style.pointerEvents = "auto";
   }
 
   const diffRadio = document.querySelector('input[value="diff"]');
   const diffLabel = diffRadio?.closest('label');
   const selectedAlgo = document.getElementById('diff-algo')?.value || 'hdiff';
-
   const shouldDisable = (selectedAlgo === 'bsdiff' && workFileSize > MAX_BSDIFF_SIZE);
 
   if (diffRadio) {
@@ -169,23 +162,15 @@ function UpdateDisplay() {
     }
     if (diffLabel) {
       diffLabel.style.opacity = shouldDisable ? "0.4" : "1";
-      diffLabel.title = shouldDisable ? i18n.diffDisabledTooltip : "";
     }
-  }
-
-  if (activeEl && activeEl !== document.body && document.activeElement !== activeEl) {
-    activeEl.focus({ preventScroll: true });
   }
 }
 
-// --- 履歴リストの更新 ---
+// --- 履歴リストの更新 (全形式表示・復元対応) ---
 async function UpdateHistory() {
   if (!i18n) return;
   const list = document.getElementById('diff-history-list');
   if (!list) return;
-
-  const currentMode = document.querySelector('input[name="backupMode"]:checked')?.value;
-  if (currentMode !== 'diff') return;
 
   if (!workFile) {
     setHistoryMessage(i18n.selectFileFirst);
@@ -193,7 +178,8 @@ async function UpdateHistory() {
   }
 
   try {
-    const data = await GetDiffList(workFile, backupDir);
+    // すべてのバックアップファイルを取得
+    const data = await GetBackupList(workFile, backupDir);
     if (!data || data.length === 0) {
       setHistoryMessage(i18n.noHistory);
       return;
@@ -201,7 +187,8 @@ async function UpdateHistory() {
 
     data.sort((a, b) => b.fileName.localeCompare(a.fileName));
     list.innerHTML = data.map(item => {
-      const sizeStr = formatSize(item.FileSize); 
+      const sizeStr = formatSize(item.FileSize);
+      
       return `
         <div class="diff-item">
           <label style="display:flex; align-items:center; cursor:pointer; width:100%;">
@@ -237,16 +224,11 @@ async function OnExecute() {
     } else if (mode === 'archive') {
       let fmt = document.getElementById('archive-format').value;
       let pwd = "";
-      
-      // パスワードモードの判定とGo用引数の正規化
       if (fmt === "zip-pass") {
         pwd = document.getElementById('archive-password').value;
-        if (!pwd) {
-            throw new Error("Password is required for encrypted ZIP.");
-        }
-        fmt = "zip"; // Go側の処理は zip として実行
+        if (!pwd) throw new Error("Password is required for encrypted ZIP.");
+        fmt = "zip";
       }
-      
       await ArchiveBackupFile(workFile, backupDir, fmt, pwd);
       successText = i18n.archiveBackupSuccess.replace('{format}', fmt.toUpperCase());
     } else if (mode === 'diff') {
@@ -261,6 +243,7 @@ async function OnExecute() {
     msgArea.textContent = successText;
     msgArea.classList.remove('hidden');
     setTimeout(() => msgArea.classList.add('hidden'), 3000);
+    
     UpdateHistory();
   } catch (err) {
     if (timer) clearInterval(timer);
@@ -286,24 +269,30 @@ window.addEventListener('click', async (e) => {
     }
   } else if (id === 'backupdir-btn') {
     const res = await SelectBackupFolder();
-    if (res) { backupDir = res; UpdateDisplay(); UpdateHistory(); }
+    if (res) {
+      backupDir = res;
+      UpdateDisplay();
+      UpdateHistory();
+    }
   } else if (id === 'execute-backup-btn') {
     OnExecute();
   } else if (id === 'refresh-diff-btn') {
     UpdateHistory();
   } else if (id === 'select-all-btn') {
-    const checkboxes = document.querySelectorAll('.diff-checkbox');
+    const checkboxes = Array.from(document.querySelectorAll('.diff-checkbox'));
     if (checkboxes.length === 0) return;
-    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+    const allChecked = checkboxes.every(cb => cb.checked);
     checkboxes.forEach(cb => cb.checked = !allChecked);
   } else if (id === 'apply-selected-btn') {
     const targets = Array.from(document.querySelectorAll('.diff-checkbox:checked')).map(el => el.value);
-    const algo = document.getElementById('diff-algo').value;
 
     if (targets.length > 0 && confirm(i18n.restoreConfirm)) {
       const timer = toggleProgress(true, "Restoring...");
       try {
-        await ApplyMultiDiff(workFile, targets, algo);
+        // 全形式対応の RestoreBackup を順次実行
+        for (const path of targets) {
+          await RestoreBackup(path, workFile);
+        }
         if (timer) clearInterval(timer);
         toggleProgress(false);
         alert(i18n.diffApplySuccess);
@@ -317,12 +306,10 @@ window.addEventListener('click', async (e) => {
   }
 });
 
-// モード変更時の同期
 document.addEventListener('change', (e) => {
-  if (e.target.name === 'backupMode' || e.target.id === 'diff-algo' || e.target.id === 'archive-format') {
-    const target = e.target;
+  const ids = ['backupMode', 'diff-algo', 'archive-format'];
+  if (ids.includes(e.target.name) || ids.includes(e.target.id)) {
     UpdateDisplay();
-    UpdateHistory();
-    if (target && target.type === 'radio') target.focus();
+    if (e.target.type === 'radio') e.target.focus();
   }
 });

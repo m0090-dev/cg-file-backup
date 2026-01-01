@@ -254,6 +254,59 @@ func TarBackupFile(src, backupDir string) error {
 	return err
 }
 
+
+// RestoreArchive は ZIP または TAR からファイルを復元します
+func (a *App) RestoreArchive(archivePath, workFile string) error {
+	ext := filepath.Ext(archivePath)
+	_ = filepath.Dir(workFile)
+
+	if ext == ".zip" {
+		// ZIPの解凍
+		r, err := zip.OpenReader(archivePath)
+		if err != nil { return err }
+		defer r.Close()
+
+		for _, f := range r.File {
+			// ワークファイル名と一致するファイル、または唯一のファイルを展開
+			rc, err := f.Open()
+			if err != nil { return err }
+			defer rc.Close()
+
+			dstFile, err := os.Create(workFile)
+			if err != nil { return err }
+			defer dstFile.Close()
+
+			_, err = io.Copy(dstFile, rc)
+			return err // 1つ目のファイルで終了（バックアップ用途のため）
+		}
+	} else if strings.HasSuffix(archivePath, ".tar.gz") {
+		// TARの解凍
+		f, err := os.Open(archivePath)
+		if err != nil { return err }
+		defer f.Close()
+
+		gzr, err := gzip.NewReader(f)
+		if err != nil { return err }
+		defer gzr.Close()
+
+		tr := tar.NewReader(gzr)
+		for {
+			_, err := tr.Next()
+			if err == io.EOF { break }
+			if err != nil { return err }
+
+			dstFile, err := os.Create(workFile)
+			if err != nil { return err }
+			defer dstFile.Close()
+
+			_, err = io.Copy(dstFile, tr)
+			return err
+		}
+	}
+	return fmt.Errorf("unsupported archive format")
+}
+
+
 // CopyFile は単純なファイルコピーを行います
 func CopyFile(src, dst string) error {
 	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil { return err }
@@ -313,4 +366,89 @@ func (a *App) OpenDirectory(path string) {
 	} else {
 		exec.Command("open", target).Run()
 	}
+}
+
+
+
+
+// GetBackupList は、バックアップディレクトリ内の関連ファイルをすべてスキャンします
+func (a *App) GetBackupList(workFile, backupDir string) ([]BackupItem, error) {
+	if backupDir == "" {
+		backupDir = DefaultBackupDir(workFile)
+	}
+	
+	files, err := os.ReadDir(backupDir)
+	if err != nil {
+		return nil, err
+	}
+
+	var list []BackupItem
+	// 拡張子を除いたベース名を取得
+	baseNameOnly := strings.TrimSuffix(filepath.Base(workFile), filepath.Ext(workFile))
+
+	for _, f := range files {
+		if f.IsDir() { continue }
+		name := f.Name()
+		
+		// ワークファイル名が含まれているファイルすべてを対象にする
+		if strings.Contains(name, baseNameOnly) {
+			info, _ := f.Info()
+			list = append(list, BackupItem{
+				FileName:  name,
+				FilePath:  filepath.Join(backupDir, name),
+				Timestamp: info.ModTime().Format("2006-01-02 15:04:05"),
+				FileSize:  info.Size(),
+			})
+		}
+	}
+	return list, nil
+}
+
+// RestoreBackup はファイル形式を自動判別して復元を実行します
+func (a *App) RestoreBackup(path, workFile string) error {
+	ext := strings.ToLower(filepath.Ext(path))
+
+	// 1. 差分パッチ (.diff)
+	if ext == ".diff" {
+		return a.ApplyMultiDiff(workFile, []string{path}, "")
+	}
+
+	// 2. ZIPアーカイブ (.zip)
+	if ext == ".zip" {
+		r, err := zip.OpenReader(path)
+		if err != nil { return err }
+		defer r.Close()
+		for _, f := range r.File {
+			rc, err := f.Open()
+			if err != nil { return err }
+			defer rc.Close()
+			return a.saveToWorkFile(rc, workFile)
+		}
+	}
+
+	// 3. TARアーカイブ (.tar.gz)
+	if strings.HasSuffix(strings.ToLower(path), ".tar.gz") {
+		f, err := os.Open(path)
+		if err != nil { return err }
+		defer f.Close()
+		gzr, err := gzip.NewReader(f)
+		if err != nil { return err }
+		defer gzr.Close()
+		tr := tar.NewReader(gzr)
+		if _, err := tr.Next(); err == nil {
+			return a.saveToWorkFile(tr, workFile)
+		}
+	}
+
+	// 4. フルコピー (.clip / .psd 等)
+	return CopyFile(path, workFile)
+}
+
+// ヘルパー: Readerの内容をワークファイルに書き出す
+func (a *App) saveToWorkFile(r io.Reader, workFile string) error {
+	out, err := os.Create(workFile)
+	if err != nil { return err }
+	defer out.Close()
+	_, err = io.Copy(out, r)
+	return err
 }

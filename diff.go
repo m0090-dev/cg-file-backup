@@ -8,41 +8,9 @@ import (
 	"time"
 )
 
-// GetDiffList は共通の拡張子 .diff を持つリストを返します
-func (a *App) GetDiffList(workFile, customDir string) ([]DiffFileInfo, error) {
-	targetDir := customDir
-	if targetDir == "" {
-		targetDir = DefaultBackupDir(workFile)
-	}
-	
-	files, err := os.ReadDir(targetDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return []DiffFileInfo{}, nil
-		}
-		return nil, err
-	}
-	
-	var list []DiffFileInfo
-	for _, f := range files {
-		// .diff で終わるファイルを取得
-		if !f.IsDir() && strings.HasSuffix(f.Name(), ".diff") {
-			ts, _ := extractTimestampFromBackup(f.Name())
-			
-			// ファイルサイズも取得してJS側に渡すと親切（formatSize用）
-			info, _ := f.Info()
-			size := info.Size()
 
-			list = append(list, DiffFileInfo{
-				FileName:  f.Name(),
-				FilePath:  filepath.Join(targetDir, f.Name()),
-				Timestamp: ts,
-				FileSize:  size, // 構造体にこのフィールドがある前提
-			})
-		}
-	}
-	return list, nil
-}
+
+
 
 // BackupOrDiff はアルゴリズム名をファイル名に含めて保存します
 func (a *App) BackupOrDiff(workFile, customDir, algo string) error {

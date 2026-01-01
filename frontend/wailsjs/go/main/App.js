@@ -54,12 +54,12 @@ export function GetAlwaysOnTop() {
   return window['go']['main']['App']['GetAlwaysOnTop']();
 }
 
-export function GetConfig() {
-  return window['go']['main']['App']['GetConfig']();
+export function GetBackupList(arg1, arg2) {
+  return window['go']['main']['App']['GetBackupList'](arg1, arg2);
 }
 
-export function GetDiffList(arg1, arg2) {
-  return window['go']['main']['App']['GetDiffList'](arg1, arg2);
+export function GetConfig() {
+  return window['go']['main']['App']['GetConfig']();
 }
 
 export function GetFileSize(arg1) {
@@ -80,6 +80,14 @@ export function GetLanguageText(arg1) {
 
 export function OpenDirectory(arg1) {
   return window['go']['main']['App']['OpenDirectory'](arg1);
+}
+
+export function RestoreArchive(arg1, arg2) {
+  return window['go']['main']['App']['RestoreArchive'](arg1, arg2);
+}
+
+export function RestoreBackup(arg1, arg2) {
+  return window['go']['main']['App']['RestoreBackup'](arg1, arg2);
 }
 
 export function SaveConfig(arg1) {

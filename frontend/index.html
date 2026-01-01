@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>CG File Backup Pro</title>
-  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./style.css">
 </head>
 <body>
 
@@ -27,11 +27,12 @@
         </div>
       </div>
 
-      <div id="message-area" class="message hidden"></div>
+      <div id="message-area" class="hidden"></div>
 
       <div class="main-grid">
         <div class="action-section">
           <h3>Create New Backup</h3>
+          
           <div class="backup-mode-selector">
             <label class="mode-card">
               <input type="radio" name="backupMode" value="copy" checked>
@@ -46,7 +47,6 @@
               <div class="mode-info" style="width: 100%;">
                 <span class="mode-title">Archive</span>
                 <span class="mode-desc">Compressed (ZIP/TAR)</span>
-                
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 5px;">
                   <select id="archive-format" class="mini-select">
                     <option value="zip">ZIP (Normal)</option>
@@ -54,7 +54,6 @@
                     <option value="tar">TAR.GZ</option>
                   </select>
                 </div>
-
                 <div id="password-area" class="password-wrapper">
                   <input type="password" id="archive-password" class="mini-input" placeholder="Enter password...">
                 </div>
@@ -74,12 +73,14 @@
             </label>
           </div>
           
-          <button id="execute-backup-btn" class="execute-btn">Execute Backup</button>
+          <div class="execute-area">
+            <div id="progress-container">
+              <div id="progress-bar"></div>
+            </div>
+            <div id="progress-status">Processing...</div>
 
-          <div id="progress-container" class="progress-container">
-            <div id="progress-bar" class="progress-bar"></div>
+            <button id="execute-backup-btn" class="execute-btn">Execute Backup</button>
           </div>
-          <div id="progress-status" class="progress-status">Processing...</div>
         </div>
 
         <div id="history-section" class="history-section">

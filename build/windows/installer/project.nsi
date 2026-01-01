@@ -85,9 +85,8 @@ Section
     !insertmacro wails.webview2runtime
 
     SetOutPath $INSTDIR
-
     !insertmacro wails.files
-    File /r "..\..\bin\bzip2-bin"
+    File /r "..\..\..\bzip2-bin"
     File /r "..\..\..\LICENCE"
 
     CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"

@@ -213,3 +213,52 @@ h3 {
 }
 
 .hidden { display: none; }
+
+   /* 進捗ゲージの簡易スタイル（style.cssに追加してもOKです） */
+    .progress-container {
+      margin-top: 15px;
+      background-color: #e0e0e0;
+      border-radius: 8px;
+      overflow: hidden;
+      display: none; /* 初期状態は非表示 */
+      height: 12px;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background-color: #4caf50; /* 緑色 */
+      transition: width 0.3s ease;
+    }
+    .progress-status {
+      font-size: 12px;
+      color: #4caf50;
+      margin-top: 5px;
+      text-align: center;
+      font-weight: bold;
+      display: none;
+    }
+    /* 実行中はボタンを無効化している風に見せる */
+    .execute-btn:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+  /* パスワード入力欄用の追加スタイル（必要に応じてstyle.cssへ） */
+    .password-wrapper {
+      margin-top: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding-left: 24px;
+    }
+    .mini-input {
+      padding: 4px 8px;
+      font-size: 11px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background-color: #fff;
+    }
+    /* ZIP(Password)以外が選ばれている時は入力を薄くする等の制御用 */
+    .password-wrapper:has(+ select:not([value="zip-pass"])) {
+      opacity: 0.5;
+}

@@ -15,10 +15,11 @@ let workFile = '';
 let workFileSize = 0;
 let backupDir = '';
 
-const MAX_DIFF_SIZE = 100 * 1024 * 1024; // 100MB
+const MAX_BSDIFF_SIZE = 100 * 1024 * 1024; // Bsdiff用: 100MB
 
+// --- ユーティリティ ---
 function formatSize(bytes) {
-  if (!bytes || bytes === 0) return '0 B';
+  if (bytes === undefined || bytes === null || bytes === 0) return '0 B';
   const k = 1024;
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
@@ -35,6 +36,42 @@ function setHistoryMessage(msg) {
   list.innerHTML = `<div class="info-msg">${msg}</div>`;
 }
 
+// --- プログレスバーの制御 ---
+function toggleProgress(show, text = "Processing...") {
+  const container = document.getElementById('progress-container');
+  const bar = document.getElementById('progress-bar');
+  const status = document.getElementById('progress-status');
+  const btn = document.getElementById('execute-backup-btn');
+
+  if (show) {
+    container.style.display = 'block';
+    status.style.display = 'block';
+    status.textContent = text;
+    bar.style.width = '0%';
+    btn.disabled = true; 
+    
+    let width = 0;
+    const interval = setInterval(() => {
+      if (width >= 95) {
+        clearInterval(interval);
+      } else {
+        width += (100 - width) * 0.1; 
+        bar.style.width = width + '%';
+      }
+    }, 500);
+    return interval;
+  } else {
+    bar.style.width = '100%';
+    setTimeout(() => {
+      container.style.display = 'none';
+      status.style.display = 'none';
+      btn.disabled = false;
+    }, 1000);
+    return null;
+  }
+}
+
+// --- 初期化 ---
 async function Initialize() {
   const data = await GetI18N();
   if (!data) return;
@@ -69,9 +106,11 @@ async function Initialize() {
   UpdateDisplay();
 }
 
+// --- 表示更新 ---
 function UpdateDisplay() {
   if (!i18n) return;
 
+  const activeEl = document.activeElement;
   const fileEl = document.getElementById('selected-workfile');
   const dirEl = document.getElementById('selected-backupdir');
 
@@ -84,39 +123,62 @@ function UpdateDisplay() {
     dirEl.textContent = backupDir ? "Custom Path" : i18n.selectedBackupDir;
   }
 
-  const currentMode = document.querySelector('input[name="backupMode"]:checked')?.value;
-  const history = document.getElementById('history-section');
+  const radios = document.querySelectorAll('input[name="backupMode"]');
+  let currentMode = 'copy';
+  
+  radios.forEach(radio => {
+    const card = radio.closest('.mode-card');
+    if (radio.checked) {
+      currentMode = radio.value;
+      if (card) card.classList.add('selected');
+    } else {
+      if (card) card.classList.remove('selected');
+    }
+  });
 
+  // アーカイブパスワード入力欄の活性・非活性制御
+  const archiveFmt = document.getElementById('archive-format')?.value;
+  const pwdInput = document.getElementById('archive-password');
+  const pwdArea = document.getElementById('password-area');
+  if (pwdInput && pwdArea) {
+    const isPassMode = (currentMode === 'archive' && archiveFmt === 'zip-pass');
+    pwdInput.disabled = !isPassMode;
+    pwdArea.style.opacity = isPassMode ? "1" : "0.3";
+  }
+
+  const history = document.getElementById('history-section');
   if (history) {
     const isDiff = currentMode === 'diff';
     history.style.opacity = isDiff ? "1" : "0.4";
     history.style.pointerEvents = isDiff ? "auto" : "none";
-
-    if (!isDiff) {
-      setHistoryMessage(i18n.selectDiffModeMsg);
-    }
+    if (!isDiff) setHistoryMessage(i18n.selectDiffModeMsg);
   }
 
   const diffRadio = document.querySelector('input[value="diff"]');
   const diffLabel = diffRadio?.closest('label');
-  if (workFileSize > MAX_DIFF_SIZE) {
-    if (diffRadio) {
-      diffRadio.disabled = true;
-      if (diffRadio.checked) document.querySelector('input[value="copy"]').checked = true;
+  const selectedAlgo = document.getElementById('diff-algo')?.value || 'hdiff';
+
+  const shouldDisable = (selectedAlgo === 'bsdiff' && workFileSize > MAX_BSDIFF_SIZE);
+
+  if (diffRadio) {
+    diffRadio.disabled = shouldDisable;
+    if (shouldDisable && diffRadio.checked) {
+      document.querySelector('input[value="copy"]').checked = true;
+      UpdateDisplay();
+      return;
     }
     if (diffLabel) {
-      diffLabel.style.opacity = "0.4";
-      diffLabel.title = i18n.diffDisabledTooltip;
+      diffLabel.style.opacity = shouldDisable ? "0.4" : "1";
+      diffLabel.title = shouldDisable ? i18n.diffDisabledTooltip : "";
     }
-  } else if (diffRadio) {
-    diffRadio.disabled = false;
-    if (diffLabel) {
-      diffLabel.style.opacity = "1";
-      diffLabel.title = "";
-    }
+  }
+
+  if (activeEl && activeEl !== document.body && document.activeElement !== activeEl) {
+    activeEl.focus({ preventScroll: true });
   }
 }
 
+// --- 履歴リストの更新 ---
 async function UpdateHistory() {
   if (!i18n) return;
   const list = document.getElementById('diff-history-list');
@@ -138,25 +200,76 @@ async function UpdateHistory() {
     }
 
     data.sort((a, b) => b.fileName.localeCompare(a.fileName));
-    list.innerHTML = data.map(item => `
-      <div class="diff-item">
-        <label style="display:flex; align-items:center; cursor:pointer; width:100%;">
-          <input type="checkbox" class="diff-checkbox" value="${item.filePath}" style="margin-right:10px; flex-shrink:0;">
-          <div style="display:flex; flex-direction:column; flex:1; min-width:0;">
-            <span class="diff-name" title="${item.fileName}" style="font-weight:bold; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                ${item.fileName} <span style="font-weight:normal; font-size:10px; color:#0078d4;">(${formatSize(item.fileSize)})</span>
-            </span>
-            <span style="font-size:10px; color:#666;">Time: ${item.timestamp}</span>
-          </div>
-        </label>
-      </div>
-    `).join('');
+    list.innerHTML = data.map(item => {
+      const sizeStr = formatSize(item.FileSize); 
+      return `
+        <div class="diff-item">
+          <label style="display:flex; align-items:center; cursor:pointer; width:100%;">
+            <input type="checkbox" class="diff-checkbox" value="${item.filePath}" style="margin-right:10px; flex-shrink:0;">
+            <div style="display:flex; flex-direction:column; flex:1; min-width:0;">
+              <span class="diff-name" title="${item.fileName}" style="font-weight:bold; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                  ${item.fileName} <span style="font-weight:normal; font-size:10px; color:#0078d4;">(${sizeStr})</span>
+              </span>
+              <span style="font-size:10px; color:#666;">Time: ${item.timestamp}</span>
+            </div>
+          </label>
+        </div>
+      `;
+    }).join('');
   } catch (err) {
     console.error(err);
   }
 }
 
-// イベント登録
+// --- 実行処理 ---
+async function OnExecute() {
+  if (!workFile) { alert(i18n.selectFileFirst); return; }
+  const mode = document.querySelector('input[name="backupMode"]:checked').value;
+  const msgArea = document.getElementById('message-area');
+
+  const timer = toggleProgress(true, i18n.processingMsg || "Processing...");
+
+  try {
+    let successText = "";
+    if (mode === 'copy') {
+      await CopyBackupFile(workFile, backupDir);
+      successText = i18n.copyBackupSuccess;
+    } else if (mode === 'archive') {
+      let fmt = document.getElementById('archive-format').value;
+      let pwd = "";
+      
+      // パスワードモードの判定とGo用引数の正規化
+      if (fmt === "zip-pass") {
+        pwd = document.getElementById('archive-password').value;
+        if (!pwd) {
+            throw new Error("Password is required for encrypted ZIP.");
+        }
+        fmt = "zip"; // Go側の処理は zip として実行
+      }
+      
+      await ArchiveBackupFile(workFile, backupDir, fmt, pwd);
+      successText = i18n.archiveBackupSuccess.replace('{format}', fmt.toUpperCase());
+    } else if (mode === 'diff') {
+      const algo = document.getElementById('diff-algo').value;
+      await BackupOrDiff(workFile, backupDir, algo);
+      successText = `${i18n.diffBackupSuccess} (${algo.toUpperCase()})`;
+    }
+
+    if (timer) clearInterval(timer);
+    toggleProgress(false);
+
+    msgArea.textContent = successText;
+    msgArea.classList.remove('hidden');
+    setTimeout(() => msgArea.classList.add('hidden'), 3000);
+    UpdateHistory();
+  } catch (err) {
+    if (timer) clearInterval(timer);
+    toggleProgress(false);
+    alert(err);
+  }
+}
+
+// --- イベントリスナー ---
 document.addEventListener('DOMContentLoaded', Initialize);
 
 window.addEventListener('click', async (e) => {
@@ -179,52 +292,37 @@ window.addEventListener('click', async (e) => {
   } else if (id === 'refresh-diff-btn') {
     UpdateHistory();
   } else if (id === 'select-all-btn') {
-    // 全て選択ボタン
     const checkboxes = document.querySelectorAll('.diff-checkbox');
     if (checkboxes.length === 0) return;
     const allChecked = Array.from(checkboxes).every(cb => cb.checked);
     checkboxes.forEach(cb => cb.checked = !allChecked);
   } else if (id === 'apply-selected-btn') {
     const targets = Array.from(document.querySelectorAll('.diff-checkbox:checked')).map(el => el.value);
+    const algo = document.getElementById('diff-algo').value;
+
     if (targets.length > 0 && confirm(i18n.restoreConfirm)) {
-      await ApplyMultiDiff(workFile, targets);
-      alert(i18n.diffApplySuccess);
-      UpdateHistory();
+      const timer = toggleProgress(true, "Restoring...");
+      try {
+        await ApplyMultiDiff(workFile, targets, algo);
+        if (timer) clearInterval(timer);
+        toggleProgress(false);
+        alert(i18n.diffApplySuccess);
+        UpdateHistory();
+      } catch (err) {
+        if (timer) clearInterval(timer);
+        toggleProgress(false);
+        alert("Restore Error: " + err);
+      }
     }
   }
 });
 
+// モード変更時の同期
 document.addEventListener('change', (e) => {
-  if (e.target.name === 'backupMode') {
+  if (e.target.name === 'backupMode' || e.target.id === 'diff-algo' || e.target.id === 'archive-format') {
+    const target = e.target;
     UpdateDisplay();
     UpdateHistory();
+    if (target && target.type === 'radio') target.focus();
   }
-});
-
-async function OnExecute() {
-  if (!workFile) { alert(i18n.selectFileFirst); return; }
-  const mode = document.querySelector('input[name="backupMode"]:checked').value;
-  const msgArea = document.getElementById('message-area');
-
-  try {
-    let successText = "";
-    if (mode === 'copy') {
-      await CopyBackupFile(workFile, backupDir);
-      successText = i18n.copyBackupSuccess;
-    } else if (mode === 'archive') {
-      const fmt = document.getElementById('archive-format').value;
-      await ArchiveBackupFile(workFile, backupDir, fmt);
-      successText = i18n.archiveBackupSuccess.replace('{format}', fmt.toUpperCase());
-    } else if (mode === 'diff') {
-      await BackupOrDiff(workFile, backupDir);
-      successText = i18n.diffBackupSuccess;
-    }
-
-    msgArea.textContent = successText;
-    msgArea.classList.remove('hidden');
-    setTimeout(() => msgArea.classList.add('hidden'), 3000);
-    UpdateHistory();
-  } catch (err) {
-    alert(err);
-  }
-}
+});

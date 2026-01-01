@@ -3,6 +3,7 @@ module cg-file-backup
 go 1.23
 
 require (
+	github.com/alexmullins/zip v0.0.0-20180717182244-4affb64b04d0
 	github.com/kr/binarydist v0.0.0-00010101000000-000000000000
 	github.com/wailsapp/wails/v2 v2.11.0
 )

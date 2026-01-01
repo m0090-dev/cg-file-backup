@@ -41,6 +41,7 @@ export namespace main {
 	    fileName: string;
 	    filePath: string;
 	    timestamp: string;
+	    fileSize: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new DiffFileInfo(source);
@@ -51,6 +52,7 @@ export namespace main {
 	        this.fileName = source["fileName"];
 	        this.filePath = source["filePath"];
 	        this.timestamp = source["timestamp"];
+	        this.fileSize = source["fileSize"];
 	    }
 	}
 

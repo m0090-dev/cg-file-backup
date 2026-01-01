@@ -3,31 +3,49 @@
 import {main} from '../models';
 import {frontend} from '../models';
 
-export function ApplyDiff(arg1:string,arg2:string):Promise<void>;
+export function ApplyBsdiff(arg1:string,arg2:string):Promise<void>;
 
-export function ApplyMultiDiff(arg1:string,arg2:Array<string>):Promise<void>;
+export function ApplyHdiff(arg1:string,arg2:string,arg3:string):Promise<void>;
 
-export function ArchiveBackupFile(arg1:string,arg2:string,arg3:string):Promise<void>;
+export function ApplyHdiffWrapper(arg1:string,arg2:string):Promise<void>;
 
-export function BackupOrDiff(arg1:string,arg2:string):Promise<void>;
+export function ApplyMultiBsdiff(arg1:string,arg2:Array<string>):Promise<void>;
+
+export function ApplyMultiDiff(arg1:string,arg2:Array<string>,arg3:string):Promise<void>;
+
+export function ArchiveBackupFile(arg1:string,arg2:string,arg3:string,arg4:string):Promise<void>;
+
+export function BackupOrBsdiff(arg1:string,arg2:string):Promise<void>;
+
+export function BackupOrDiff(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function BackupOrHdiff(arg1:string,arg2:string):Promise<void>;
 
 export function CopyBackupFile(arg1:string,arg2:string):Promise<void>;
 
-export function CreateDiff(arg1:string,arg2:string,arg3:string):Promise<void>;
+export function CreateBsdiff(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function CreateHdiff(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function GetAlwaysOnTop():Promise<boolean>;
 
+export function GetBackupList(arg1:string,arg2:string):Promise<Array<main.BackupItem>>;
+
 export function GetConfig():Promise<main.AppConfig>;
 
-export function GetDiffList(arg1:string,arg2:string):Promise<Array<main.DiffFileInfo>>;
-
 export function GetFileSize(arg1:string):Promise<number>;
+
+export function GetHdiffList(arg1:string,arg2:string):Promise<Array<main.DiffFileInfo>>;
 
 export function GetI18N():Promise<Record<string, string>>;
 
 export function GetLanguageText(arg1:string):Promise<string>;
 
 export function OpenDirectory(arg1:string):Promise<void>;
+
+export function RestoreArchive(arg1:string,arg2:string):Promise<void>;
+
+export function RestoreBackup(arg1:string,arg2:string):Promise<void>;
 
 export function SaveConfig(arg1:main.AppConfig):Promise<void>;
 

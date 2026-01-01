@@ -14,13 +14,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kr/binarydist"
+	//"github.com/kr/binarydist"
 	"github.com/wailsapp/wails/v2/pkg/menu"
 	"github.com/wailsapp/wails/v2/pkg/menu/keys"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	_ "embed"
 	goruntime "runtime"
 	"os/exec"
+	pwzip "github.com/alexmullins/zip"
 )
 
 //go:embed frontend/src/assets/AppConfig.json
@@ -32,12 +33,7 @@ type App struct {
 	configPath string
 }
 
-// JS側で確実に受け取るための構造体
-type DiffFileInfo struct {
-	FileName  string `json:"fileName"`  // test-project.clip.2025...diff が入る
-	FilePath  string `json:"filePath"`  // フルパスが入る
-	Timestamp string `json:"timestamp"` // 2025... 部分が入る
-}
+
 
 func NewApp() *App {
 	cfg, path, err := LoadAppConfig()
@@ -146,122 +142,184 @@ func (a *App) setupMenu() *menu.Menu {
 	return rootMenu
 }
 
-// ----------------- 差分・履歴管理 (表示修復) -----------------
+
+
+// ----------------- ファイル操作実装 (パスワード対応) -----------------
+
+// CopyBackupFile はファイルをそのままコピーします
+func (a *App) CopyBackupFile(src, backupDir string) error {
+	if backupDir == "" {
+		backupDir = DefaultBackupDir(src)
+	}
+	if err := os.MkdirAll(backupDir, 0755); err != nil {
+		return err
+	}
+	return CopyFile(src, filepath.Join(backupDir, TimestampedName(src)))
+}
+
+// ArchiveBackupFile は指定された形式で圧縮バックアップを作成します
+func (a *App) ArchiveBackupFile(src, backupDir, format, password string) error {
+	if backupDir == "" {
+		backupDir = DefaultBackupDir(src)
+	}
+	if err := os.MkdirAll(backupDir, 0755); err != nil {
+		return err
+	}
+
+	if format == "zip" {
+		return ZipBackupFile(src, backupDir, password)
+	}
+	// Tarはパスワード非対応
+	return TarBackupFile(src, backupDir)
+}
+
+// ZipBackupFile はパスワードの有無によりライブラリを使い分けてZIPを作成します
+func ZipBackupFile(src, backupDir, password string) error {
+	zipPath := filepath.Join(backupDir, TimestampedName(strings.TrimSuffix(filepath.Base(src), filepath.Ext(src))+".zip"))
+	
+	zf, err := os.Create(zipPath)
+	if err != nil { return err }
+	defer zf.Close()
 
-func (a *App) GetDiffList(workFile, customDir string) ([]DiffFileInfo, error) {
-	targetDir := customDir
-	if targetDir == "" { targetDir = DefaultBackupDir(workFile) }
-	
-	files, err := os.ReadDir(targetDir)
-	if err != nil {
-		if os.IsNotExist(err) { return []DiffFileInfo{}, nil }
-		return nil, err
+	f, err := os.Open(src)
+	if err != nil { return err }
+	defer f.Close()
+
+	if password != "" {
+		// --- パスワードあり (alexmullins/zip を使用) ---
+		archive := pwzip.NewWriter(zf)
+		defer archive.Close()
+
+		// ライブラリのサンプルに従い、Encrypt で直接 Writer を作成
+		// 引数は (ファイル名, パスワード) の2つのみ
+		writer, err := archive.Encrypt(filepath.Base(src), password)
+		if err != nil {
+			return err
+		}
+		
+		_, err = io.Copy(writer, f)
+		if err != nil {
+			return err
+		}
+		
+		return archive.Flush() // 書き込みを確定させるために Flush を呼ぶ
+
+	} else {
+		// --- パスワードなし (標準 archive/zip を使用) ---
+		archive := zip.NewWriter(zf)
+		defer archive.Close()
+
+		info, err := f.Stat()
+		if err != nil { return err }
+
+		header, err := zip.FileInfoHeader(info)
+		if err != nil { return err }
+		header.Name = filepath.Base(src)
+		header.Method = zip.Deflate
+
+		writer, err := archive.CreateHeader(header)
+		if err != nil { return err }
+		
+		_, err = io.Copy(writer, f)
+		return err
 	}
-	
-	var list []DiffFileInfo
-	for _, f := range files {
-		if !f.IsDir() && strings.HasSuffix(f.Name(), ".diff") {
-			ts, _ := extractTimestampFromBackup(f.Name())
-			list = append(list, DiffFileInfo{
-				FileName:  f.Name(), // ここで test-project.clip.2025...diff を丸ごと渡す
-				FilePath:  filepath.Join(targetDir, f.Name()),
-				Timestamp: ts,
-			})
+}
+
+
+
+// TarBackupFile は .tar.gz 形式で圧縮します
+func TarBackupFile(src, backupDir string) error {
+	tarPath := filepath.Join(backupDir, TimestampedName(strings.TrimSuffix(filepath.Base(src), filepath.Ext(src))+".tar.gz"))
+	tf, err := os.Create(tarPath)
+	if err != nil { return err }
+	defer tf.Close()
+
+	gw := gzip.NewWriter(tf)
+	defer gw.Close()
+	tw := tar.NewWriter(gw)
+	defer tw.Close()
+
+	f, err := os.Open(src)
+	if err != nil { return err }
+	defer f.Close()
+
+	info, err := f.Stat()
+	if err != nil { return err }
+	header, err := tar.FileInfoHeader(info, "")
+	if err != nil { return err }
+	header.Name = filepath.Base(src)
+
+	if err := tw.WriteHeader(header); err != nil { return err }
+	_, err = io.Copy(tw, f)
+	return err
+}
+
+
+// RestoreArchive は ZIP または TAR からファイルを復元します
+func (a *App) RestoreArchive(archivePath, workFile string) error {
+	ext := filepath.Ext(archivePath)
+	_ = filepath.Dir(workFile)
+
+	if ext == ".zip" {
+		// ZIPの解凍
+		r, err := zip.OpenReader(archivePath)
+		if err != nil { return err }
+		defer r.Close()
+
+		for _, f := range r.File {
+			// ワークファイル名と一致するファイル、または唯一のファイルを展開
+			rc, err := f.Open()
+			if err != nil { return err }
+			defer rc.Close()
+
+			dstFile, err := os.Create(workFile)
+			if err != nil { return err }
+			defer dstFile.Close()
+
+			_, err = io.Copy(dstFile, rc)
+			return err // 1つ目のファイルで終了（バックアップ用途のため）
+		}
+	} else if strings.HasSuffix(archivePath, ".tar.gz") {
+		// TARの解凍
+		f, err := os.Open(archivePath)
+		if err != nil { return err }
+		defer f.Close()
+
+		gzr, err := gzip.NewReader(f)
+		if err != nil { return err }
+		defer gzr.Close()
+
+		tr := tar.NewReader(gzr)
+		for {
+			_, err := tr.Next()
+			if err == io.EOF { break }
+			if err != nil { return err }
+
+			dstFile, err := os.Create(workFile)
+			if err != nil { return err }
+			defer dstFile.Close()
+
+			_, err = io.Copy(dstFile, tr)
+			return err
 		}
 	}
-	return list, nil
-}
-
-func (a *App) BackupOrDiff(workFile, customDir string) error {
-	targetDir := customDir
-	if targetDir == "" { targetDir = DefaultBackupDir(workFile) }
-	if err := os.MkdirAll(targetDir, 0755); err != nil { return err }
-
-	baseName := filepath.Base(workFile)
-	baseFull := filepath.Join(targetDir, baseName+".base")
-
-	if _, err := os.Stat(baseFull); os.IsNotExist(err) {
-		return CopyFile(workFile, baseFull)
-	}
-	ts := time.Now().Format("20060102_150405")
-	diffPath := filepath.Join(targetDir, baseName+"."+ts+".diff")
-	return a.CreateDiff(baseFull, workFile, diffPath)
-}
-
-func (a *App) ApplyMultiDiff(workFile string, diffPaths []string) error {
-	for _, dp := range diffPaths {
-		if err := a.ApplyDiff(workFile, dp); err != nil { return err }
-	}
-	return nil
-}
-
-func (a *App) CreateDiff(OldFile, NewFile, DiffFile string) error {
-	oldF, err := os.Open(OldFile); if err != nil { return err }; defer oldF.Close()
-	newF, err := os.Open(NewFile); if err != nil { return err }; defer newF.Close()
-	diffF, err := os.Create(DiffFile); if err != nil { return err }; defer diffF.Close()
-	return binarydist.Diff(oldF, newF, diffF)
-}
-
-func (a *App) ApplyDiff(workFile, diffFile string) error {
-	backupDir := filepath.Dir(diffFile)
-	baseName := strings.Split(filepath.Base(diffFile), ".20")[0] + ".base"
-	baseFull := filepath.Join(backupDir, baseName)
-	if _, err := os.Stat(baseFull); os.IsNotExist(err) {
-		baseFull = filepath.Join(backupDir, filepath.Base(workFile)+".base")
-	}
-
-	oldF, err := os.Open(baseFull); if err != nil { return err }; defer oldF.Close()
-	patchF, err := os.Open(diffFile); if err != nil { return err }; defer patchF.Close()
-	outPath := autoOutputPath(workFile)
-	outF, err := os.Create(outPath); if err != nil { return err }; defer outF.Close()
-	return binarydist.Patch(oldF, outF, patchF)
-}
-
-// ----------------- ファイル操作実装 -----------------
-
-func (a *App) CopyBackupFile(src, backupDir string) error {
-	if backupDir == "" { backupDir = DefaultBackupDir(src) }
-	os.MkdirAll(backupDir, 0755)
-	return CopyFile(src, filepath.Join(backupDir, TimestampedName(src)))
-}
-
-func (a *App) ArchiveBackupFile(src, backupDir, format string) error {
-	if backupDir == "" { backupDir = DefaultBackupDir(src) }
-	os.MkdirAll(backupDir, 0755)
-	if format == "zip" {
-		return ZipBackupFile(src, backupDir)
-	}
-	return TarBackupFile(src, backupDir)
-}
-
-func ZipBackupFile(src, backupDir string) error {
-	zipPath := filepath.Join(backupDir, TimestampedName(strings.TrimSuffix(filepath.Base(src), filepath.Ext(src))+".zip"))
-	zf, err := os.Create(zipPath); if err != nil { return err }; defer zf.Close()
-	archive := zip.NewWriter(zf); defer archive.Close()
-	f, err := os.Open(src); if err != nil { return err }; defer f.Close()
-	info, _ := f.Stat(); header, _ := zip.FileInfoHeader(info); header.Name = filepath.Base(src); header.Method = zip.Deflate
-	writer, _ := archive.CreateHeader(header); io.Copy(writer, f)
-	return nil
-}
-
-func TarBackupFile(src, backupDir string) error {
-	tarPath := filepath.Join(backupDir, TimestampedName(strings.TrimSuffix(filepath.Base(src), filepath.Ext(src))+".tar.gz"))
-	tf, err := os.Create(tarPath); if err != nil { return err }; defer tf.Close()
-	gw := gzip.NewWriter(tf); defer gw.Close(); tw := tar.NewWriter(gw); defer tw.Close()
-	f, err := os.Open(src); if err != nil { return err }; defer f.Close()
-	info, _ := f.Stat(); header, _ := tar.FileInfoHeader(info, ""); header.Name = filepath.Base(src)
-	tw.WriteHeader(header); io.Copy(tw, f)
-	return nil
-}
-
-func CopyFile(src, dst string) error {
-	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil { return err }
-	in, err := os.Open(src); if err != nil { return err }; defer in.Close()
-	out, err := os.Create(dst); if err != nil { return err }; defer out.Close()
-	if _, err := io.Copy(out, in); err != nil { return err }
-	return out.Sync()
-}
-
+	return fmt.Errorf("unsupported archive format")
+}
+
+
+// CopyFile は単純なファイルコピーを行います
+func CopyFile(src, dst string) error {
+	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil { return err }
+	in, err := os.Open(src)
+	if err != nil { return err }
+	defer in.Close()
+	out, err := os.Create(dst)
+	if err != nil { return err }
+	defer out.Close()
+	if _, err := io.Copy(out, in); err != nil { return err }
+	return out.Sync()
+}
+
 // ----------------- ヘルパー -----------------
 
 func extractTimestampFromBackup(path string) (string, error) {
@@ -308,4 +366,89 @@ func (a *App) OpenDirectory(path string) {
 	} else {
 		exec.Command("open", target).Run()
 	}
+}
+
+
+
+
+// GetBackupList は、バックアップディレクトリ内の関連ファイルをすべてスキャンします
+func (a *App) GetBackupList(workFile, backupDir string) ([]BackupItem, error) {
+	if backupDir == "" {
+		backupDir = DefaultBackupDir(workFile)
+	}
+	
+	files, err := os.ReadDir(backupDir)
+	if err != nil {
+		return nil, err
+	}
+
+	var list []BackupItem
+	// 拡張子を除いたベース名を取得
+	baseNameOnly := strings.TrimSuffix(filepath.Base(workFile), filepath.Ext(workFile))
+
+	for _, f := range files {
+		if f.IsDir() { continue }
+		name := f.Name()
+		
+		// ワークファイル名が含まれているファイルすべてを対象にする
+		if strings.Contains(name, baseNameOnly) {
+			info, _ := f.Info()
+			list = append(list, BackupItem{
+				FileName:  name,
+				FilePath:  filepath.Join(backupDir, name),
+				Timestamp: info.ModTime().Format("2006-01-02 15:04:05"),
+				FileSize:  info.Size(),
+			})
+		}
+	}
+	return list, nil
+}
+
+// RestoreBackup はファイル形式を自動判別して復元を実行します
+func (a *App) RestoreBackup(path, workFile string) error {
+	ext := strings.ToLower(filepath.Ext(path))
+
+	// 1. 差分パッチ (.diff)
+	if ext == ".diff" {
+		return a.ApplyMultiDiff(workFile, []string{path}, "")
+	}
+
+	// 2. ZIPアーカイブ (.zip)
+	if ext == ".zip" {
+		r, err := zip.OpenReader(path)
+		if err != nil { return err }
+		defer r.Close()
+		for _, f := range r.File {
+			rc, err := f.Open()
+			if err != nil { return err }
+			defer rc.Close()
+			return a.saveToWorkFile(rc, workFile)
+		}
+	}
+
+	// 3. TARアーカイブ (.tar.gz)
+	if strings.HasSuffix(strings.ToLower(path), ".tar.gz") {
+		f, err := os.Open(path)
+		if err != nil { return err }
+		defer f.Close()
+		gzr, err := gzip.NewReader(f)
+		if err != nil { return err }
+		defer gzr.Close()
+		tr := tar.NewReader(gzr)
+		if _, err := tr.Next(); err == nil {
+			return a.saveToWorkFile(tr, workFile)
+		}
+	}
+
+	// 4. フルコピー (.clip / .psd 等)
+	return CopyFile(path, workFile)
+}
+
+// ヘルパー: Readerの内容をワークファイルに書き出す
+func (a *App) saveToWorkFile(r io.Reader, workFile string) error {
+	out, err := os.Create(workFile)
+	if err != nil { return err }
+	defer out.Close()
+	_, err = io.Copy(out, r)
+	return err
 }

@@ -404,14 +404,21 @@ func (a *App) GetBackupList(workFile, backupDir string) ([]BackupItem, error) {
 	return list, nil
 }
 
+
+
+
 // RestoreBackup はファイル形式を自動判別して復元を実行します
 func (a *App) RestoreBackup(path, workFile string) error {
 	ext := strings.ToLower(filepath.Ext(path))
 
-	// 1. 差分パッチ (.diff)
+	// 1. 差分パッチ (.diff) 
+	// ※ ApplyMultiDiff 内部で既に autoOutputPath が使われているのでそのままでOK
 	if ext == ".diff" {
 		return a.ApplyMultiDiff(workFile, []string{path}, "")
 	}
+
+	// ★ 復元先のパスを「別名」として生成する
+	restoredPath := autoOutputPath(workFile)
 
 	// 2. ZIPアーカイブ (.zip)
 	if ext == ".zip" {
@@ -422,7 +429,8 @@ func (a *App) RestoreBackup(path, workFile string) error {
 			rc, err := f.Open()
 			if err != nil { return err }
 			defer rc.Close()
-			return a.saveToWorkFile(rc, workFile)
+			// workFile ではなく restoredPath に保存
+			return a.saveToWorkFile(rc, restoredPath)
 		}
 	}
 
@@ -436,22 +444,26 @@ func (a *App) RestoreBackup(path, workFile string) error {
 		defer gzr.Close()
 		tr := tar.NewReader(gzr)
 		if _, err := tr.Next(); err == nil {
-			return a.saveToWorkFile(tr, workFile)
+			// workFile ではなく restoredPath に保存
+			return a.saveToWorkFile(tr, restoredPath)
 		}
 	}
 
 	// 4. フルコピー (.clip / .psd 等)
-	return CopyFile(path, workFile)
-}
-
+	// workFile ではなく restoredPath にコピー
+	return CopyFile(path, restoredPath)
+}
+
+
 // ヘルパー: Readerの内容をワークファイルに書き出す
-func (a *App) saveToWorkFile(r io.Reader, workFile string) error {
-	out, err := os.Create(workFile)
+func (a *App) saveToWorkFile(r io.Reader, targetFile string) error {
+	out, err := os.Create(targetFile)
 	if err != nil { return err }
 	defer out.Close()
-	_, err = io.Copy(out, r)
-	return err
+	if _, err = io.Copy(out, r); err != nil { return err }
+	return out.Sync() // ディスクへの書き込みを確定させる
 }
+
 
 
 // WriteTextFile は指定されたパスに文字列を書き込みます（汎用）

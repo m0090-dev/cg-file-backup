@@ -369,30 +369,41 @@ func (a *App) OpenDirectory(path string) {
 }
 
 
-
-
-// GetBackupList は、バックアップディレクトリ内の関連ファイルをすべてスキャンします
 func (a *App) GetBackupList(workFile, backupDir string) ([]BackupItem, error) {
 	if backupDir == "" {
 		backupDir = DefaultBackupDir(workFile)
 	}
-	
+
 	files, err := os.ReadDir(backupDir)
 	if err != nil {
 		return nil, err
 	}
 
 	var list []BackupItem
-	// 拡張子を除いたベース名を取得
 	baseNameOnly := strings.TrimSuffix(filepath.Base(workFile), filepath.Ext(workFile))
 
 	for _, f := range files {
 		if f.IsDir() { continue }
 		name := f.Name()
-		
-		// ワークファイル名が含まれているファイルすべてを対象にする
-		if strings.Contains(name, baseNameOnly) {
-			info, _ := f.Info()
+
+		// 1. ワークファイル名が含まれているか確認
+		if !strings.Contains(name, baseNameOnly) {
+			continue
+		}
+
+		// 2. 拡張子のフィルタリング
+		// .tar.gz は特殊なので、HasSuffix で判定するのが確実です
+		isValidExt := false
+		if strings.HasSuffix(name, ".diff") || 
+		   strings.HasSuffix(name, ".zip") || 
+		   strings.HasSuffix(name, ".tar.gz") {
+			isValidExt = true
+		}
+
+		if isValidExt {
+			info, err := f.Info()
+			if err != nil { continue } // 情報が取得できない場合はスキップ
+
 			list = append(list, BackupItem{
 				FileName:  name,
 				FilePath:  filepath.Join(backupDir, name),
@@ -402,9 +413,8 @@ func (a *App) GetBackupList(workFile, backupDir string) ([]BackupItem, error) {
 		}
 	}
 	return list, nil
-}
-
-
+}
+
 
 
 // RestoreBackup はファイル形式を自動判別して復元を実行します

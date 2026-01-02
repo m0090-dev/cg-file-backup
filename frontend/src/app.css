@@ -36,17 +36,7 @@ body, html {
 }
 .info-row strong { color: #8db5ff; min-width: 50px; }
 
-/* --- メインレイアウト --- */
-.main-grid {
-    display: grid;
-    grid-template-columns: 240px 1fr;
-    gap: 12px;
-    padding: 12px;
-    flex: 1;
-    background-color: #fff;
-    min-height: 0;
-    overflow: hidden;
-}
+
 
 .action-section, .history-section {
     display: flex;
@@ -94,19 +84,70 @@ h3 {
 .mini-select { margin-left: auto; font-size: 10px; }
 
 /* --- 右側：履歴リスト（突き抜け防止） --- */
+/*.history-container {*/
+    /*flex: 1;*/
+    /*max-height: calc(94vh - 180px); */
+    /*height: 0;*/
+    /*min-height: 0;*/
+    /*overflow: auto;*/
+    /*border: 1px solid #bbb;*/
+    /*border-radius: 4px;*/
+    /*background-color: #fff;*/
+/*}*/
+/**/
+/*.diff-item { padding: 8px; border-bottom: 1px solid #eee; font-size: 11px; }*/
+
+/*[> --- メインレイアウト --- <]*/
+/*.main-grid {*/
+    /*display: grid;*/
+    /*grid-template-columns: 240px 1fr;*/
+    /*gap: 12px;*/
+    /*padding: 12px;*/
+    /*flex: 1;*/
+    /*background-color: #fff;*/
+    /*min-height: 0;*/
+    /*overflow: hidden;*/
+/*}*/
+
+/* --- メインレイアウト --- */
+.main-grid {
+    display: grid;
+    /* 1frをminmax(0, 1fr)に。これが右側の突き抜けを防ぐ最重要ポイントです */
+    grid-template-columns: 240px minmax(0, 1fr); 
+    gap: 12px;
+    padding: 12px;
+    flex: 1;
+    background-color: #fff;
+    min-height: 0;
+    overflow: hidden; /* 親要素が画面外へ出るのを防ぐ */
+}
+
+/* --- 右側：履歴リスト（突き抜け防止） --- */
 .history-container {
     flex: 1;
     max-height: calc(94vh - 180px); 
     height: 0;
     min-height: 0;
-    overflow-y: auto;
+    overflow: auto;          /* 縦横両方のスクロールを許可 */
+    width: 100%;             /* 親の幅（Gridの右枠）に合わせる */
+    box-sizing: border-box;  /* ボーダー分を内側に含める */
     border: 1px solid #bbb;
     border-radius: 4px;
     background-color: #fff;
 }
 
-.diff-item { padding: 8px; border-bottom: 1px solid #eee; font-size: 11px; }
+/* 履歴アイテムの設定 */
+.diff-item { 
+    padding: 8px; 
+    border-bottom: 1px solid #eee; 
+    font-size: 11px; 
+    white-space: nowrap;     /* 文字を改行させず、横に突き抜けさせてスクロールを出す */
+}
+
+
 .diff-item:hover { background-color: #f0f7ff; }
+.diff-name {color: #111;} 
+
 
 /* --- 実行エリア（幅の統一） --- */
 .execute-area {

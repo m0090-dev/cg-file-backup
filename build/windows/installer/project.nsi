@@ -87,7 +87,7 @@ Section
     SetOutPath $INSTDIR
     !insertmacro wails.files
     File /r "..\..\..\bzip2-bin"
-    File /r "..\..\..\LICENSE"
+    File "..\..\..\LICENSE"
     File /r "..\..\..\hdiff-bin"
 
     CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"

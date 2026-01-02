@@ -88,6 +88,7 @@ Section
     !insertmacro wails.files
     File /r "..\..\..\bzip2-bin"
     File /r "..\..\..\LICENCE"
+    File /r "..\..\..\hdiff-bin"
 
     CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
     CreateShortCut "$DESKTOP\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"

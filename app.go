@@ -452,3 +452,22 @@ func (a *App) saveToWorkFile(r io.Reader, workFile string) error {
 	_, err = io.Copy(out, r)
 	return err
 }
+
+
+// WriteTextFile は指定されたパスに文字列を書き込みます（汎用）
+func (a *App) WriteTextFile(path string, content string) error {
+    // フォルダが存在しない可能性も考慮する場合はここで作成しても良い
+    return os.WriteFile(path, []byte(content), 0644)
+}
+
+// ReadTextFile は指定されたパスのファイルを文字列として読み込みます（汎用）
+func (a *App) ReadTextFile(path string) (string, error) {
+    if _, err := os.Stat(path); os.IsNotExist(err) {
+        return "", nil // ファイルがない場合はエラーにせず空文字を返す
+    }
+    b, err := os.ReadFile(path)
+    if err != nil {
+        return "", err
+    }
+    return string(b), nil
+}

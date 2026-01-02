@@ -82,6 +82,10 @@ export function OpenDirectory(arg1) {
   return window['go']['main']['App']['OpenDirectory'](arg1);
 }
 
+export function ReadTextFile(arg1) {
+  return window['go']['main']['App']['ReadTextFile'](arg1);
+}
+
 export function RestoreArchive(arg1, arg2) {
   return window['go']['main']['App']['RestoreArchive'](arg1, arg2);
 }
@@ -108,4 +112,8 @@ export function SetAlwaysOnTop(arg1) {
 
 export function SetLanguage(arg1) {
   return window['go']['main']['App']['SetLanguage'](arg1);
+}
+
+export function WriteTextFile(arg1, arg2) {
+  return window['go']['main']['App']['WriteTextFile'](arg1, arg2);
 }

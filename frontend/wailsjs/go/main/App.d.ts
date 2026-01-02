@@ -43,6 +43,8 @@ export function GetLanguageText(arg1:string):Promise<string>;
 
 export function OpenDirectory(arg1:string):Promise<void>;
 
+export function ReadTextFile(arg1:string):Promise<string>;
+
 export function RestoreArchive(arg1:string,arg2:string):Promise<void>;
 
 export function RestoreBackup(arg1:string,arg2:string):Promise<void>;
@@ -56,3 +58,5 @@ export function SelectBackupFolder():Promise<string>;
 export function SetAlwaysOnTop(arg1:boolean):Promise<void>;
 
 export function SetLanguage(arg1:string):Promise<void>;
+
+export function WriteTextFile(arg1:string,arg2:string):Promise<void>;

@@ -7,7 +7,10 @@ import {
   BackupOrDiff,
   GetBackupList,
   RestoreBackup,
-  GetFileSize
+  GetFileSize,
+  // Go側で追加した汎用関数
+  WriteTextFile,
+  ReadTextFile
 } from '../wailsjs/go/main/App';
 
 let i18n = null;
@@ -35,8 +38,8 @@ function showFloatingMessage(text) {
   setTimeout(() => msgArea.classList.add('hidden'), 3000);
 }
 
-// --- プログレスバーの制御（レイアウトを壊さない） ---
-
+// --- プログレスバーの制御（レイアウトを壊さない） ---
+
 function toggleProgress(show, text = "Processing...") {
   const container = document.getElementById('progress-container');
   const bar = document.getElementById('progress-bar');
@@ -74,8 +77,8 @@ function toggleProgress(show, text = "Processing...") {
     }, 500);
     return null;
   }
-}
-
+}
+
 
 // --- 初期化 ---
 async function Initialize() {
@@ -126,7 +129,7 @@ function UpdateDisplay() {
     fileEl.textContent = fileName + sizeStr;
   }
   if (dirEl) {
-    dirEl.textContent = backupDir ? "Custom Path" : i18n.selectedBackupDir;
+    dirEl.textContent = backupDir ? backupDir : i18n.selectedBackupDir;
   }
 
   const selectedMode = document.querySelector('input[name="backupMode"]:checked')?.value || 'copy';
@@ -153,49 +156,63 @@ function UpdateDisplay() {
   }
 }
 
-// --- 履歴リストの更新 ---
-async function UpdateHistory() {
-  if (!i18n) return;
-  const list = document.getElementById('diff-history-list');
-  if (!list) return;
-
-  if (!workFile) {
-    list.innerHTML = `<div class="info-msg">${i18n.selectFileFirst}</div>`;
-    return;
-  }
-
-  try {
-    const data = await GetBackupList(workFile, backupDir);
-    if (!data || data.length === 0) {
-      list.innerHTML = `<div class="info-msg">${i18n.noHistory}</div>`;
-      return;
-    }
-
-    data.sort((a, b) => b.fileName.localeCompare(a.fileName));
-    list.innerHTML = data.map(item => `
-        <div class="diff-item">
-          <label style="display:flex; align-items:center; cursor:pointer; width:100%;">
-            <input type="checkbox" class="diff-checkbox" value="${item.filePath}" style="margin-right:10px; flex-shrink:0;">
-            <div style="display:flex; flex-direction:column; flex:1; min-width:0;">
-              <span class="diff-name" title="${item.fileName}" style="font-weight:bold; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                  ${item.fileName} <span style="font-size:10px; color:#0078d4;">(${formatSize(item.FileSize)})</span>
-              </span>
-              <span style="font-size:10px; color:#666;">${item.timestamp}</span>
-            </div>
-          </label>
-        </div>
-      `).join('');
-  } catch (err) {
-    console.error(err);
-  }
-}
-
+// --- 履歴リストの更新（メモ表示 & ツールチップ改行対応） ---
+async function UpdateHistory() {
+  if (!i18n) return;
+  const list = document.getElementById('diff-history-list');
+  if (!list) return;
 
+  if (!workFile) {
+    list.innerHTML = `<div class="info-msg">${i18n.selectFileFirst}</div>`;
+    return;
+  }
 
+  try {
+    const data = await GetBackupList(workFile, backupDir);
+    if (!data || data.length === 0) {
+      list.innerHTML = `<div class="info-msg">${i18n.noHistory}</div>`;
+      return;
+    }
 
+    data.sort((a, b) => b.fileName.localeCompare(a.fileName));
+
+    const itemsHtml = await Promise.all(data.map(async (item) => {
+      // .noteファイルを読み込む
+      const note = await ReadTextFile(item.filePath + ".note").catch(() => "");
+      
+      // ツールチップ用：パスとメモを改行で分離
+      const tooltip = note ? `${item.filePath}\n\n[MEMO]\n${note}` : item.filePath;
+
+      return `
+        <div class="diff-item">
+          <div style="display:flex; align-items:center; width:100%;">
+            <label style="display:flex; align-items:center; cursor:pointer; flex:1; min-width:0;">
+              <input type="checkbox" class="diff-checkbox" value="${item.filePath}" style="margin-right:10px; flex-shrink:0;">
+              <div style="display:flex; flex-direction:column; flex:1; min-width:0;">
+                <span class="diff-name" title="${tooltip}" style="font-weight:bold; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                    ${item.fileName} <span style="font-size:10px; color:#0078d4;">(${formatSize(item.FileSize)})</span>
+                </span>
+                <span style="font-size:10px; color:#666;">${item.timestamp}</span>
+                ${note ? `<div class="note-text" style="font-size:10px; color:#2f8f5b; margin-top:2px; font-style:italic; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">📝 ${note}</div>` : ''}
+              </div>
+            </label>
+            <button class="note-btn" data-path="${item.filePath}" style="margin-left:8px; background:none; border:none; cursor:pointer; font-size:14px; padding:4px;" title="Edit Memo">📝</button>
+          </div>
+        </div>
+      `;
+    }));
+
+    list.innerHTML = itemsHtml.join('');
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+
+
 // --- バックアップ実行 ---
-
-
+
+
 async function OnExecute() {
   if (!workFile) { alert(i18n.selectFileFirst); return; }
   const mode = document.querySelector('input[name="backupMode"]:checked').value;
@@ -236,14 +253,33 @@ async function OnExecute() {
     toggleProgress(false);
     alert(err);
   }
-}
-
+}
+
 // --- イベントリスナー設定 ---
 document.addEventListener('DOMContentLoaded', Initialize);
 
 window.addEventListener('click', async (e) => {
   if (!i18n) return;
   const id = e.target.id;
+  const target = e.target;
+
+  // メモボタンのクリック判定（アイコン自体か、ボタン枠か）
+  const noteBtn = target.closest('.note-btn');
+  if (noteBtn) {
+    const filePath = noteBtn.getAttribute('data-path');
+    const currentNote = await ReadTextFile(filePath + ".note").catch(() => "");
+    const newNote = prompt("Memo / Annotation:", currentNote);
+    
+    if (newNote !== null) {
+      try {
+        await WriteTextFile(filePath + ".note", newNote);
+        UpdateHistory(); // リストを更新してメモを表示
+      } catch (err) {
+        alert("Failed to save memo: " + err);
+      }
+    }
+    return;
+  }
 
   if (id === 'workfile-btn') {
     const res = await SelectAnyFile(i18n.workFileBtn, [{ DisplayName: "Target", Pattern: "*.*" }]);

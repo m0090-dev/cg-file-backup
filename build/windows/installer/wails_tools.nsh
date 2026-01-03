@@ -8,7 +8,7 @@
     !define INFO_PROJECTNAME "cg-file-backup"
 !endif
 !ifndef INFO_COMPANYNAME
-    !define INFO_COMPANYNAME "cg-file-backup"
+    !define INFO_COMPANYNAME "m0090-dev"
 !endif
 !ifndef INFO_PRODUCTNAME
     !define INFO_PRODUCTNAME "cg-file-backup"
@@ -17,7 +17,7 @@
     !define INFO_PRODUCTVERSION "1.0.0"
 !endif
 !ifndef INFO_COPYRIGHT
-    !define INFO_COPYRIGHT "Copyright........."
+    !define INFO_COPYRIGHT "Copyright (c) 2025 m0090-dev"
 !endif
 !ifndef PRODUCT_EXECUTABLE
     !define PRODUCT_EXECUTABLE "${INFO_PROJECTNAME}.exe"

@@ -8,10 +8,11 @@ import {
   GetBackupList,
   RestoreBackup,
   GetFileSize,
-  // Go側で追加した汎用関数
   WriteTextFile,
   ReadTextFile
 } from '../wailsjs/go/main/App';
+
+import { OnFileDrop } from "../wailsjs/runtime/runtime";
 
 let i18n = null;
 let workFile = '';
@@ -34,12 +35,71 @@ function showFloatingMessage(text) {
   if (!msgArea) return;
   msgArea.textContent = text;
   msgArea.classList.remove('hidden');
-  // 3秒後にフェードアウト（CSSのhiddenクラスと連動）
   setTimeout(() => msgArea.classList.add('hidden'), 3000);
 }
-
-// --- プログレスバーの制御（レイアウトを壊さない） ---
-
+// --- ドラッグアンドドロップの実装 ---
+function setupDragAndDrop() {
+    const preventDefaults = (e) => { e.preventDefault(); e.stopPropagation(); };
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(name => window.addEventListener(name, preventDefaults, false));
+
+    const modal = document.getElementById('drop-modal');
+    const pathText = document.getElementById('drop-modal-path');
+    
+    OnFileDrop((x, y, paths) => {
+        if (!paths || paths.length === 0) return;
+        const droppedPath = paths[0];
+
+        setTimeout(async () => {
+            let isDirectory = false;
+            try {
+                // GetFileSizeがエラーを投げるか、特定の値を返すかで判定
+                const size = await GetFileSize(droppedPath);
+                // Go側の実装に依存しますが、一般的にフォルダはサイズ取得でエラーか負の値を返します
+                if (size === undefined || size < 0) isDirectory = true;
+            } catch (e) {
+                isDirectory = true;
+            }
+
+            // モーダルを表示
+            pathText.textContent = droppedPath;
+            modal.classList.remove('hidden');
+
+            // --- ボタンのクリックイベント設定 ---
+            
+            // 「作業ファイルに設定」ボタン
+            document.getElementById('drop-set-workfile').onclick = async () => {
+                if (isDirectory) {
+                    alert(i18n.dropErrorFolderAsFile);
+                    return;
+                }
+                workFile = droppedPath;
+                workFileSize = await GetFileSize(droppedPath);
+                finishDrop(i18n.updatedWorkFile);
+            };
+
+            // 「保存先フォルダに設定」ボタン
+            document.getElementById('drop-set-backupdir').onclick = () => {
+                if (!isDirectory) {
+                    alert(i18n.dropErrorFileAsFolder);
+                    return;
+                }
+                backupDir = droppedPath;
+                finishDrop(i18n.updatedBackupDir);
+            };
+
+            document.getElementById('drop-cancel').onclick = () => modal.classList.add('hidden');
+
+            function finishDrop(msg) {
+                modal.classList.add('hidden');
+                showFloatingMessage(msg);
+                UpdateDisplay();
+                UpdateHistory();
+            }
+        }, 200);
+    }, true);
+}
+
+// --- プログレスバーの制御 ---
 function toggleProgress(show, text = "Processing...") {
   const container = document.getElementById('progress-container');
   const bar = document.getElementById('progress-bar');
@@ -47,13 +107,10 @@ function toggleProgress(show, text = "Processing...") {
   const btn = document.getElementById('execute-backup-btn');
 
   if (show) {
-    // 1. スタイルを適用
     container.style.display = 'block';
     status.style.display = 'block';
     status.textContent = text;
     bar.style.width = '0%';
-    
-    // 2. ブラウザに「今すぐ描画しろ」と強制する魔法の1行（オフセット読み取り）
     container.offsetHeight; 
 
     if (btn) btn.disabled = true;
@@ -79,13 +136,13 @@ function toggleProgress(show, text = "Processing...") {
   }
 }
 
-
-// --- 初期化 ---
+// --- 初期化 (完全版) ---
 async function Initialize() {
   const data = await GetI18N();
   if (!data) return;
   i18n = data;
 
+  // テキスト更新用のヘルパー
   const setText = (id, text) => {
     const el = document.getElementById(id);
     if (el) el.textContent = text;
@@ -95,6 +152,7 @@ async function Initialize() {
     if (el) el.textContent = text;
   };
 
+  // メイン画面のテキスト設定
   setQueryText('.action-section h3', i18n.newBackupTitle);
   setQueryText('.history-section h3', i18n.historyTitle);
   setText('workfile-btn', i18n.workFileBtn);
@@ -104,6 +162,7 @@ async function Initialize() {
   setText('apply-selected-btn', i18n.applyBtn);
   setText('select-all-btn', i18n.selectAllBtn);
 
+  // バックアップモードのタイトルと説明
   const titles = document.querySelectorAll('.mode-title');
   const descs = document.querySelectorAll('.mode-desc');
   if (titles.length >= 3) {
@@ -112,9 +171,24 @@ async function Initialize() {
     titles[2].textContent = i18n.diffTitle; descs[2].textContent = i18n.diffDesc;
   }
 
+  // --- ドロップモーダルの多言語化設定 ---
+  setText('drop-modal-title', i18n.dropModalTitle);
+  // 説明文（path表示の下にある指示文）を取得して設定
+  const dropInstruction = document.querySelector('#drop-modal p:not(.path-display)');
+  if (dropInstruction) {
+    dropInstruction.textContent = i18n.dropSelectTarget;
+  }
+  setText('drop-set-workfile', i18n.dropSetWorkFile);
+  setText('drop-set-backupdir', i18n.dropSetBackupDir);
+  setText('drop-cancel', i18n.dropCancel);
+
+  // 初回表示の更新
   UpdateDisplay();
   UpdateHistory();
-}
+  
+  // ドラッグ＆ドロップイベントの有効化
+  setupDragAndDrop();
+}
 
 // --- 表示更新 ---
 function UpdateDisplay() {
@@ -133,7 +207,6 @@ function UpdateDisplay() {
   }
 
   const selectedMode = document.querySelector('input[name="backupMode"]:checked')?.value || 'copy';
-
   const archiveFmt = document.getElementById('archive-format')?.value;
   const pwdInput = document.getElementById('archive-password');
   const pwdArea = document.querySelector('.password-wrapper');
@@ -156,76 +229,64 @@ function UpdateDisplay() {
   }
 }
 
-// --- 履歴リストの更新（メモ表示 & ツールチップ改行対応） ---
-async function UpdateHistory() {
-  if (!i18n) return;
-  const list = document.getElementById('diff-history-list');
-  if (!list) return;
-
-  if (!workFile) {
-    list.innerHTML = `<div class="info-msg">${i18n.selectFileFirst}</div>`;
-    return;
-  }
-
-  try {
-    const data = await GetBackupList(workFile, backupDir);
-    if (!data || data.length === 0) {
-      list.innerHTML = `<div class="info-msg">${i18n.noHistory}</div>`;
-      return;
-    }
-
-    data.sort((a, b) => b.fileName.localeCompare(a.fileName));
-
-    const itemsHtml = await Promise.all(data.map(async (item) => {
-      // .noteファイルを読み込む
-      const note = await ReadTextFile(item.filePath + ".note").catch(() => "");
-      
-      // ツールチップ用：パスとメモを改行で分離
-      const tooltip = note ? `${item.filePath}\n\n[MEMO]\n${note}` : item.filePath;
-
-      return `
-        <div class="diff-item">
-          <div style="display:flex; align-items:center; width:100%;">
-            <label style="display:flex; align-items:center; cursor:pointer; flex:1; min-width:0;">
-              <input type="checkbox" class="diff-checkbox" value="${item.filePath}" style="margin-right:10px; flex-shrink:0;">
-              <div style="display:flex; flex-direction:column; flex:1; min-width:0;">
-                <span class="diff-name" title="${tooltip}" style="font-weight:bold; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                    ${item.fileName} <span style="font-size:10px; color:#0078d4;">(${formatSize(item.FileSize)})</span>
-                </span>
-                <span style="font-size:10px; color:#666;">${item.timestamp}</span>
-                ${note ? `<div class="note-text" style="font-size:10px; color:#2f8f5b; margin-top:2px; font-style:italic; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">📝 ${note}</div>` : ''}
-              </div>
-            </label>
-            <button class="note-btn" data-path="${item.filePath}" style="margin-left:8px; background:none; border:none; cursor:pointer; font-size:14px; padding:4px;" title="Edit Memo">📝</button>
-          </div>
-        </div>
-      `;
-    }));
-
-    list.innerHTML = itemsHtml.join('');
-  } catch (err) {
-    console.error(err);
-  }
-}
+// --- 履歴リストの更新 ---
+async function UpdateHistory() {
+  if (!i18n) return;
+  const list = document.getElementById('diff-history-list');
+  if (!list) return;
 
+  if (!workFile) {
+    list.innerHTML = `<div class="info-msg">${i18n.selectFileFirst}</div>`;
+    return;
+  }
 
+  try {
+    const data = await GetBackupList(workFile, backupDir);
+    if (!data || data.length === 0) {
+      list.innerHTML = `<div class="info-msg">${i18n.noHistory}</div>`;
+      return;
+    }
+
+    data.sort((a, b) => b.fileName.localeCompare(a.fileName));
+
+    const itemsHtml = await Promise.all(data.map(async (item) => {
+      const note = await ReadTextFile(item.filePath + ".note").catch(() => "");
+      const tooltip = note ? `${item.filePath}\n\n[MEMO]\n${note}` : item.filePath;
+
+      return `
+        <div class="diff-item">
+          <div style="display:flex; align-items:center; width:100%;">
+            <label style="display:flex; align-items:center; cursor:pointer; flex:1; min-width:0;">
+              <input type="checkbox" class="diff-checkbox" value="${item.filePath}" style="margin-right:10px; flex-shrink:0;">
+              <div style="display:flex; flex-direction:column; flex:1; min-width:0;">
+                <span class="diff-name" title="${tooltip}" style="font-weight:bold; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                    ${item.fileName} <span style="font-size:10px; color:#0078d4;">(${formatSize(item.FileSize)})</span>
+                </span>
+                <span style="font-size:10px; color:#666;">${item.timestamp}</span>
+                ${note ? `<div class="note-text" style="font-size:10px; color:#2f8f5b; margin-top:2px; font-style:italic; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"> ${note}</div>` : ''}
+              </div>
+            </label>
+            <button class="note-btn" data-path="${item.filePath}" style="margin-left:8px; background:none; border:none; cursor:pointer; font-size:14px; padding:4px;" title="Edit Memo"></button>
+          </div>
+        </div>
+      `;
+    }));
+
+    list.innerHTML = itemsHtml.join('');
+  } catch (err) {
+    console.error(err);
+  }
+}
 
 // --- バックアップ実行 ---
-
-
 async function OnExecute() {
   if (!workFile) { alert(i18n.selectFileFirst); return; }
   const mode = document.querySelector('input[name="backupMode"]:checked').value;
-
-  // 1. ゲージ表示命令
   const timer = toggleProgress(true, i18n.processingMsg || "Processing...");
-
-  // 2. ★超重要：ここで100ms待つ。これがないと、ゲージが出る前にGoの処理にCPUを奪われます
   await new Promise(resolve => setTimeout(resolve, 100));
 
   try {
     let successText = "";
-    // --- Go側の重い処理を await ---
     if (mode === 'copy') {
       await CopyBackupFile(workFile, backupDir);
       successText = i18n.copyBackupSuccess;
@@ -262,18 +323,16 @@ window.addEventListener('click', async (e) => {
   if (!i18n) return;
   const id = e.target.id;
   const target = e.target;
-
-  // メモボタンのクリック判定（アイコン自体か、ボタン枠か）
   const noteBtn = target.closest('.note-btn');
+
   if (noteBtn) {
     const filePath = noteBtn.getAttribute('data-path');
     const currentNote = await ReadTextFile(filePath + ".note").catch(() => "");
     const newNote = prompt("Memo / Annotation:", currentNote);
-    
     if (newNote !== null) {
       try {
         await WriteTextFile(filePath + ".note", newNote);
-        UpdateHistory(); // リストを更新してメモを表示
+        UpdateHistory();
       } catch (err) {
         alert("Failed to save memo: " + err);
       }

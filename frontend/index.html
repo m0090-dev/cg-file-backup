@@ -99,6 +99,18 @@
     </div>
   </div>
 </div>
+<div id="drop-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <h4 id="drop-modal-title">File/Folder Dropped</h4>
+        <p id="drop-modal-path" class="path-display"></p>
+        <p>Please select the target type:</p>
+        <div class="modal-buttons">
+            <button id="drop-set-workfile" class="modal-btn primary">Set as Work File</button>
+            <button id="drop-set-backupdir" class="modal-btn secondary">Set as Backup Folder</button>
+            <button id="drop-cancel" class="modal-btn cancel">Cancel</button>
+        </div>
+    </div>
+</div>
 <script type="module" src="./src/main.js"></script>
 </body>
 </html>

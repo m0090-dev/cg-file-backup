@@ -58,11 +58,12 @@ function renderRecentFiles() {
   list.innerHTML = recentFiles.map(path => {
     const fileName = path.split(/[\\/]/).pop();
     return `<div class="recent-item" title="${path}" data-path="${path}">
-              <i>🕒</i> ${fileName}
+              <i></i> ${fileName}
             </div>`;
   }).join('');
 
   list.querySelectorAll('.recent-item').forEach(el => {
+    // 左クリック：ファイルを選択
     el.onclick = async (e) => {
       e.stopPropagation();
       const path = el.getAttribute('data-path');
@@ -79,6 +80,16 @@ function renderRecentFiles() {
         localStorage.setItem('recentFiles', JSON.stringify(recentFiles));
         renderRecentFiles();
       }
+    };
+
+    // 右クリック：リストから削除 (追加部分)
+    el.oncontextmenu = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const path = el.getAttribute('data-path');
+      recentFiles = recentFiles.filter(p => p !== path);
+      localStorage.setItem('recentFiles', JSON.stringify(recentFiles));
+      renderRecentFiles();
     };
   });
 }
@@ -140,10 +151,10 @@ async function UpdateHistory() {
                   ${item.fileName} <span style="font-size:10px; color:#3B5998;">(${formatSize(item.FileSize)})</span>
                 </span>
                 <span style="font-size:10px; color:#888;">${item.timestamp}</span>
-                ${note ? `<div style="font-size:10px; color:#2f8f5b; font-style:italic; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">📝 ${note}</div>` : ''}
+                ${note ? `<div style="font-size:10px; color:#2f8f5b; font-style:italic; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"> ${note}</div>` : ''}
               </div>
             </label>
-            <button class="note-btn" data-path="${item.filePath}" style="background:none; border:none; cursor:pointer; font-size:14px; padding:4px;">📝</button>
+            <button class="note-btn" data-path="${item.filePath}" style="background:none; border:none; cursor:pointer; font-size:14px; padding:4px;"></button>
           </div>
         </div>`;
     }));

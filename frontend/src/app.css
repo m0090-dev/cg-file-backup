@@ -356,3 +356,69 @@ h3 {
     background: #6c757d; /* キャンセル (Gray) */
     color: white;
 }
+
+/* --- タブ機能のスタイル --- */
+.tabs-bar {
+  display: flex;
+  align-items: center;
+  background: #f0f0f0;
+  border-bottom: 1px solid #ccc;
+  padding: 8px 10px 0 10px;
+  gap: 5px;
+}
+
+.tabs-list {
+  display: flex;
+  gap: 3px;
+  overflow-x: auto;
+  scrollbar-width: none; /* Firefox */
+}
+.tabs-list::-webkit-scrollbar { display: none; } /* Chrome/Safari */
+
+.tab-item {
+  padding: 6px 14px;
+  background: #e0e0e0;
+  border: 1px solid #ccc;
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  cursor: pointer;
+  font-size: 12px;
+  max-width: 140px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: none;
+  color: #666;
+  position: relative;
+  transition: background 0.2s;
+}
+
+.tab-item.active {
+  background: #ffffff;
+  color: #000;
+  font-weight: bold;
+  border-bottom: 1px solid #ffffff; /* 下線を消して一体化 */
+  margin-bottom: -1px;
+  z-index: 10;
+}
+
+.tab-item:hover:not(.active) {
+  background: #d8d8d8;
+}
+
+.add-tab-btn {
+  background: #3B5998;
+  color: white;
+  border: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  margin-bottom: 5px;
+  line-height: 1;
+}
+
+.add-tab-btn:hover {
+  background: #2d4373;
+}

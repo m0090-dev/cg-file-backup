@@ -14,12 +14,18 @@ import {
 
 import { OnFileDrop } from "../wailsjs/runtime/runtime";
 
+// --- 状態管理 ---
 let i18n = null;
-let workFile = '';
-let workFileSize = 0;
-let backupDir = '';
+let tabs = [
+  { id: Date.now(), workFile: '', workFileSize: 0, backupDir: '', active: true }
+];
 
 const MAX_BSDIFF_SIZE = 100 * 1024 * 1024; // 100MB
+
+// --- ヘルパー: アクティブなタブを取得 ---
+function getActiveTab() {
+  return tabs.find(t => t.active);
+}
 
 // --- ユーティリティ ---
 function formatSize(bytes) {
@@ -37,69 +43,125 @@ function showFloatingMessage(text) {
   msgArea.classList.remove('hidden');
   setTimeout(() => msgArea.classList.add('hidden'), 3000);
 }
-// --- ドラッグアンドドロップの実装 ---
-function setupDragAndDrop() {
-    const preventDefaults = (e) => { e.preventDefault(); e.stopPropagation(); };
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(name => window.addEventListener(name, preventDefaults, false));
-
-    const modal = document.getElementById('drop-modal');
-    const pathText = document.getElementById('drop-modal-path');
-    
-    OnFileDrop((x, y, paths) => {
-        if (!paths || paths.length === 0) return;
-        const droppedPath = paths[0];
-
-        setTimeout(async () => {
-            let isDirectory = false;
-            try {
-                // GetFileSizeがエラーを投げるか、特定の値を返すかで判定
-                const size = await GetFileSize(droppedPath);
-                // Go側の実装に依存しますが、一般的にフォルダはサイズ取得でエラーか負の値を返します
-                if (size === undefined || size < 0) isDirectory = true;
-            } catch (e) {
-                isDirectory = true;
-            }
-
-            // モーダルを表示
-            pathText.textContent = droppedPath;
-            modal.classList.remove('hidden');
-
-            // --- ボタンのクリックイベント設定 ---
-            
-            // 「作業ファイルに設定」ボタン
-            document.getElementById('drop-set-workfile').onclick = async () => {
-                if (isDirectory) {
-                    alert(i18n.dropErrorFolderAsFile);
-                    return;
-                }
-                workFile = droppedPath;
-                workFileSize = await GetFileSize(droppedPath);
-                finishDrop(i18n.updatedWorkFile);
-            };
-
-            // 「保存先フォルダに設定」ボタン
-            document.getElementById('drop-set-backupdir').onclick = () => {
-                if (!isDirectory) {
-                    alert(i18n.dropErrorFileAsFolder);
-                    return;
-                }
-                backupDir = droppedPath;
-                finishDrop(i18n.updatedBackupDir);
-            };
-
-            document.getElementById('drop-cancel').onclick = () => modal.classList.add('hidden');
-
-            function finishDrop(msg) {
-                modal.classList.add('hidden');
-                showFloatingMessage(msg);
-                UpdateDisplay();
-                UpdateHistory();
-            }
-        }, 200);
-    }, true);
-}
-
-// --- プログレスバーの制御 ---
+
+// --- タブUIの描画 ---
+function renderTabs() {
+  const list = document.getElementById('tabs-list');
+  if (!list) return;
+  list.innerHTML = '';
+
+  tabs.forEach(tab => {
+    const el = document.createElement('div');
+    el.className = `tab-item ${tab.active ? 'active' : ''}`;
+    
+    // タブ名：ファイル名があればそれを、なければ「New Tab」
+    const fileName = tab.workFile ? tab.workFile.split(/[\\/]/).pop() : (i18n?.selectedWorkFile || "New Tab");
+    el.textContent = fileName;
+    el.title = tab.workFile || fileName;
+
+    // クリックで切り替え
+    el.onclick = () => switchTab(tab.id);
+
+    // 右クリックで削除
+    el.oncontextmenu = (e) => {
+      e.preventDefault();
+      if (tabs.length > 1) {
+        removeTab(tab.id);
+      }
+    };
+
+    list.appendChild(el);
+  });
+}
+
+function switchTab(id) {
+  tabs.forEach(t => t.active = (t.id === id));
+  renderTabs();
+  UpdateDisplay();
+  UpdateHistory();
+}
+
+function addTab() {
+  tabs.forEach(t => t.active = false);
+  const newTab = {
+    id: Date.now(),
+    workFile: '',
+    workFileSize: 0,
+    backupDir: '',
+    active: true
+  };
+  tabs.push(newTab);
+  renderTabs();
+  UpdateDisplay();
+  UpdateHistory();
+}
+
+function removeTab(id) {
+  const index = tabs.findIndex(t => t.id === id);
+  const wasActive = tabs[index].active;
+  tabs.splice(index, 1);
+  
+  if (wasActive) {
+    tabs[Math.max(0, index - 1)].active = true;
+  }
+  renderTabs();
+  UpdateDisplay();
+  UpdateHistory();
+}
+
+// --- ドラッグアンドドロップ ---
+function setupDragAndDrop() {
+  const preventDefaults = (e) => { e.preventDefault(); e.stopPropagation(); };
+  ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(name => window.addEventListener(name, preventDefaults, false));
+
+  const modal = document.getElementById('drop-modal');
+  const pathText = document.getElementById('drop-modal-path');
+  
+  OnFileDrop((x, y, paths) => {
+    if (!paths || paths.length === 0) return;
+    const droppedPath = paths[0];
+
+    setTimeout(async () => {
+      let isDirectory = false;
+      try {
+        const size = await GetFileSize(droppedPath);
+        if (size === undefined || size < 0) isDirectory = true;
+      } catch (e) {
+        isDirectory = true;
+      }
+
+      pathText.textContent = droppedPath;
+      modal.classList.remove('hidden');
+
+      document.getElementById('drop-set-workfile').onclick = async () => {
+        if (isDirectory) { alert(i18n.dropErrorFolderAsFile); return; }
+        const tab = getActiveTab();
+        tab.workFile = droppedPath;
+        tab.workFileSize = await GetFileSize(droppedPath);
+        finishDrop(i18n.updatedWorkFile);
+      };
+
+      document.getElementById('drop-set-backupdir').onclick = () => {
+        if (!isDirectory) { alert(i18n.dropErrorFileAsFolder); return; }
+        const tab = getActiveTab();
+        tab.backupDir = droppedPath;
+        finishDrop(i18n.updatedBackupDir);
+      };
+
+      document.getElementById('drop-cancel').onclick = () => modal.classList.add('hidden');
+
+      function finishDrop(msg) {
+        modal.classList.add('hidden');
+        showFloatingMessage(msg);
+        renderTabs(); // タブ名を更新するため
+        UpdateDisplay();
+        UpdateHistory();
+      }
+    }, 200);
+  }, true);
+}
+
+// --- プログレスバー ---
 function toggleProgress(show, text = "Processing...") {
   const container = document.getElementById('progress-container');
   const bar = document.getElementById('progress-bar');
@@ -111,18 +173,12 @@ function toggleProgress(show, text = "Processing...") {
     status.style.display = 'block';
     status.textContent = text;
     bar.style.width = '0%';
-    container.offsetHeight; 
-
     if (btn) btn.disabled = true;
 
     let width = 0;
     const interval = setInterval(() => {
-      if (width >= 90) {
-        clearInterval(interval);
-      } else {
-        width += (95 - width) * 0.1;
-        bar.style.width = width + '%';
-      }
+      if (width >= 90) clearInterval(interval);
+      else { width += (95 - width) * 0.1; bar.style.width = width + '%'; }
     }, 200);
     return interval;
   } else {
@@ -136,13 +192,12 @@ function toggleProgress(show, text = "Processing...") {
   }
 }
 
-// --- 初期化 (完全版) ---
+// --- 初期化 ---
 async function Initialize() {
   const data = await GetI18N();
   if (!data) return;
   i18n = data;
 
-  // テキスト更新用のヘルパー
   const setText = (id, text) => {
     const el = document.getElementById(id);
     if (el) el.textContent = text;
@@ -152,7 +207,6 @@ async function Initialize() {
     if (el) el.textContent = text;
   };
 
-  // メイン画面のテキスト設定
   setQueryText('.action-section h3', i18n.newBackupTitle);
   setQueryText('.history-section h3', i18n.historyTitle);
   setText('workfile-btn', i18n.workFileBtn);
@@ -162,7 +216,6 @@ async function Initialize() {
   setText('apply-selected-btn', i18n.applyBtn);
   setText('select-all-btn', i18n.selectAllBtn);
 
-  // バックアップモードのタイトルと説明
   const titles = document.querySelectorAll('.mode-title');
   const descs = document.querySelectorAll('.mode-desc');
   if (titles.length >= 3) {
@@ -171,41 +224,37 @@ async function Initialize() {
     titles[2].textContent = i18n.diffTitle; descs[2].textContent = i18n.diffDesc;
   }
 
-  // --- ドロップモーダルの多言語化設定 ---
   setText('drop-modal-title', i18n.dropModalTitle);
-  // 説明文（path表示の下にある指示文）を取得して設定
   const dropInstruction = document.querySelector('#drop-modal p:not(.path-display)');
-  if (dropInstruction) {
-    dropInstruction.textContent = i18n.dropSelectTarget;
-  }
+  if (dropInstruction) dropInstruction.textContent = i18n.dropSelectTarget;
   setText('drop-set-workfile', i18n.dropSetWorkFile);
   setText('drop-set-backupdir', i18n.dropSetBackupDir);
   setText('drop-cancel', i18n.dropCancel);
 
-  // 初回表示の更新
+  renderTabs();
   UpdateDisplay();
   UpdateHistory();
-  
-  // ドラッグ＆ドロップイベントの有効化
   setupDragAndDrop();
-}
+}
 
 // --- 表示更新 ---
 function UpdateDisplay() {
-  if (!i18n) return;
+  const tab = getActiveTab();
+  if (!i18n || !tab) return;
 
   const fileEl = document.getElementById('selected-workfile');
   const dirEl = document.getElementById('selected-backupdir');
 
   if (fileEl) {
-    const fileName = workFile ? workFile.split(/[\\/]/).pop() : i18n.selectedWorkFile;
-    const sizeStr = workFile ? ` [${formatSize(workFileSize)}]` : "";
+    const fileName = tab.workFile ? tab.workFile.split(/[\\/]/).pop() : i18n.selectedWorkFile;
+    const sizeStr = tab.workFile ? ` [${formatSize(tab.workFileSize)}]` : "";
     fileEl.textContent = fileName + sizeStr;
   }
   if (dirEl) {
-    dirEl.textContent = backupDir ? backupDir : i18n.selectedBackupDir;
+    dirEl.textContent = tab.backupDir ? tab.backupDir : i18n.selectedBackupDir;
   }
 
+  // UIの状態維持（パスワード入力等）
   const selectedMode = document.querySelector('input[name="backupMode"]:checked')?.value || 'copy';
   const archiveFmt = document.getElementById('archive-format')?.value;
   const pwdInput = document.getElementById('archive-password');
@@ -215,33 +264,22 @@ function UpdateDisplay() {
     pwdInput.disabled = !isPassMode;
     pwdArea.style.opacity = isPassMode ? "1" : "0.3";
   }
-
-  const diffRadio = document.querySelector('input[value="diff"]');
-  const selectedAlgo = document.getElementById('diff-algo')?.value || 'hdiff';
-  const shouldDisableDiff = (selectedAlgo === 'bsdiff' && workFileSize > MAX_BSDIFF_SIZE);
-
-  if (diffRadio) {
-    diffRadio.disabled = shouldDisableDiff;
-    if (shouldDisableDiff && diffRadio.checked) {
-      document.querySelector('input[value="copy"]').checked = true;
-      UpdateDisplay();
-    }
-  }
 }
 
-// --- 履歴リストの更新 ---
+// --- 履歴リスト更新 ---
 async function UpdateHistory() {
-  if (!i18n) return;
+  const tab = getActiveTab();
+  if (!i18n || !tab) return;
   const list = document.getElementById('diff-history-list');
   if (!list) return;
 
-  if (!workFile) {
+  if (!tab.workFile) {
     list.innerHTML = `<div class="info-msg">${i18n.selectFileFirst}</div>`;
     return;
   }
 
   try {
-    const data = await GetBackupList(workFile, backupDir);
+    const data = await GetBackupList(tab.workFile, tab.backupDir);
     if (!data || data.length === 0) {
       list.innerHTML = `<div class="info-msg">${i18n.noHistory}</div>`;
       return;
@@ -271,16 +309,15 @@ async function UpdateHistory() {
         </div>
       `;
     }));
-
     list.innerHTML = itemsHtml.join('');
-  } catch (err) {
-    console.error(err);
-  }
+  } catch (err) { console.error(err); }
 }
 
-// --- バックアップ実行 ---
+// --- 実行 ---
 async function OnExecute() {
-  if (!workFile) { alert(i18n.selectFileFirst); return; }
+  const tab = getActiveTab();
+  if (!tab || !tab.workFile) { alert(i18n.selectFileFirst); return; }
+  
   const mode = document.querySelector('input[name="backupMode"]:checked').value;
   const timer = toggleProgress(true, i18n.processingMsg || "Processing...");
   await new Promise(resolve => setTimeout(resolve, 100));
@@ -288,20 +325,17 @@ async function OnExecute() {
   try {
     let successText = "";
     if (mode === 'copy') {
-      await CopyBackupFile(workFile, backupDir);
+      await CopyBackupFile(tab.workFile, tab.backupDir);
       successText = i18n.copyBackupSuccess;
     } else if (mode === 'archive') {
       let fmt = document.getElementById('archive-format').value;
-      let pwd = "";
-      if (fmt === "zip-pass") {
-        pwd = document.getElementById('archive-password').value;
-        fmt = "zip";
-      }
-      await ArchiveBackupFile(workFile, backupDir, fmt, pwd);
+      let pwd = (fmt === "zip-pass") ? document.getElementById('archive-password').value : "";
+      if (fmt === "zip-pass") fmt = "zip";
+      await ArchiveBackupFile(tab.workFile, tab.backupDir, fmt, pwd);
       successText = i18n.archiveBackupSuccess.replace('{format}', fmt.toUpperCase());
     } else if (mode === 'diff') {
       const algo = document.getElementById('diff-algo').value;
-      await BackupOrDiff(workFile, backupDir, algo);
+      await BackupOrDiff(tab.workFile, tab.backupDir, algo);
       successText = `${i18n.diffBackupSuccess} (${algo.toUpperCase()})`;
     }
 
@@ -316,26 +350,27 @@ async function OnExecute() {
   }
 }
 
-// --- イベントリスナー設定 ---
+// --- イベント ---
 document.addEventListener('DOMContentLoaded', Initialize);
 
 window.addEventListener('click', async (e) => {
   if (!i18n) return;
   const id = e.target.id;
-  const target = e.target;
-  const noteBtn = target.closest('.note-btn');
+  const tab = getActiveTab();
 
+  if (id === 'add-tab-btn') {
+    addTab();
+    return;
+  }
+
+  const noteBtn = e.target.closest('.note-btn');
   if (noteBtn) {
     const filePath = noteBtn.getAttribute('data-path');
     const currentNote = await ReadTextFile(filePath + ".note").catch(() => "");
-    const newNote = prompt("Memo / Annotation:", currentNote);
+    const newNote = prompt("Memo:", currentNote);
     if (newNote !== null) {
-      try {
-        await WriteTextFile(filePath + ".note", newNote);
-        UpdateHistory();
-      } catch (err) {
-        alert("Failed to save memo: " + err);
-      }
+      await WriteTextFile(filePath + ".note", newNote);
+      UpdateHistory();
     }
     return;
   }
@@ -343,15 +378,16 @@ window.addEventListener('click', async (e) => {
   if (id === 'workfile-btn') {
     const res = await SelectAnyFile(i18n.workFileBtn, [{ DisplayName: "Target", Pattern: "*.*" }]);
     if (res) {
-      workFile = res;
-      workFileSize = await GetFileSize(res);
+      tab.workFile = res;
+      tab.workFileSize = await GetFileSize(res);
+      renderTabs(); // タブ名を更新
       UpdateDisplay();
       UpdateHistory();
     }
   } else if (id === 'backupdir-btn') {
     const res = await SelectBackupFolder();
     if (res) {
-      backupDir = res;
+      tab.backupDir = res;
       UpdateDisplay();
       UpdateHistory();
     }
@@ -360,24 +396,21 @@ window.addEventListener('click', async (e) => {
   } else if (id === 'refresh-diff-btn') {
     UpdateHistory();
   } else if (id === 'select-all-btn') {
-    const checkboxes = Array.from(document.querySelectorAll('.diff-checkbox'));
-    if (checkboxes.length === 0) return;
-    const allChecked = checkboxes.every(cb => cb.checked);
+    const checkboxes = document.querySelectorAll('.diff-checkbox');
+    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
     checkboxes.forEach(cb => cb.checked = !allChecked);
   } else if (id === 'apply-selected-btn') {
     const targets = Array.from(document.querySelectorAll('.diff-checkbox:checked')).map(el => el.value);
     if (targets.length > 0 && confirm(i18n.restoreConfirm)) {
       const timer = toggleProgress(true, "Restoring...");
       try {
-        for (const path of targets) {
-          await RestoreBackup(path, workFile);
-        }
+        for (const path of targets) { await RestoreBackup(path, tab.workFile); }
         if (timer) clearInterval(timer);
         toggleProgress(false);
         showFloatingMessage(i18n.diffApplySuccess);
         UpdateHistory();
       } catch (err) {
-        if (timer) clearInterval(timer);
+        if (timer) clearInterval(interval);
         toggleProgress(false);
         alert("Restore Error: " + err);
       }

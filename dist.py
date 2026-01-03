@@ -54,6 +54,14 @@ def create_release_package():
             shutil.copy2(pattern, dist_dir)
             break
 
+    # 5.1 CREDITSファイルのコピー (追加)
+    credits_patterns = ["CREDITS", "CREDITS.txt", "CREDITS.md"]
+    for pattern in credits_patterns:
+        if os.path.exists(pattern):
+            print(f"Copying credits: {pattern}")
+            shutil.copy2(pattern, dist_dir)
+            break
+
     # 6. ZIP圧縮処理
     if args.zip:
         print(f"--- Archiving to {dist_dir}.zip ---")

@@ -9,7 +9,9 @@ import {
   RestoreBackup,
   GetFileSize,
   WriteTextFile,
-  ReadTextFile
+  ReadTextFile,
+  GetConfigDir,              // 追加
+  GetRestorePreviousState    // 追加
 } from '../wailsjs/go/main/App';
 
 import { OnFileDrop } from "../wailsjs/runtime/runtime";
@@ -19,6 +21,7 @@ let i18n = null;
 let tabs = [{ id: Date.now(), workFile: '', workFileSize: 0, backupDir: '', active: true }];
 let recentFiles = JSON.parse(localStorage.getItem('recentFiles') || '[]');
 const MAX_RECENT_COUNT = 5;
+const SESSION_FILE_NAME = "session.json"; // 追加
 
 // --- ヘルパー ---
 function getActiveTab() { return tabs.find(t => t.active); }
@@ -44,6 +47,45 @@ function showFloatingMessage(text) {
   msgArea.textContent = text;
   msgArea.classList.remove('hidden');
   setTimeout(() => msgArea.classList.add('hidden'), 3000);
+}
+
+// --- セッション保存・復元ロジック (追加) ---
+
+async function saveCurrentSession() {
+  try {
+    const shouldRestore = await GetRestorePreviousState();
+    if (!shouldRestore) return;
+
+    const configDir = await GetConfigDir();
+    const sessionPath = configDir + "/" + SESSION_FILE_NAME;
+    const data = JSON.stringify({ tabs, recentFiles });
+    await WriteTextFile(sessionPath, data);
+  } catch (err) {
+    console.error("Save session failed:", err);
+  }
+}
+
+async function restoreSession() {
+  try {
+    const shouldRestore = await GetRestorePreviousState();
+    if (!shouldRestore) return;
+
+    const configDir = await GetConfigDir();
+    const sessionPath = configDir + "/" + SESSION_FILE_NAME;
+    const content = await ReadTextFile(sessionPath);
+    if (content) {
+      const saved = JSON.parse(content);
+      if (saved.tabs && saved.tabs.length > 0) {
+        tabs = saved.tabs;
+      }
+      if (saved.recentFiles) {
+        recentFiles = saved.recentFiles;
+        localStorage.setItem('recentFiles', JSON.stringify(recentFiles));
+      }
+    }
+  } catch (err) {
+    console.log("No session to restore.");
+  }
 }
 
 // --- UI描画系 ---
@@ -73,6 +115,7 @@ function renderRecentFiles() {
         tab.workFile = path;
         addToRecentFiles(path);
         renderTabs(); UpdateDisplay(); UpdateHistory();
+        saveCurrentSession(); // 状態保存を追加
         const popup = document.querySelector('.recent-files-section');
         if (popup) { popup.style.display = 'none'; setTimeout(() => popup.style.removeProperty('display'), 500); }
       } catch (err) {
@@ -82,7 +125,7 @@ function renderRecentFiles() {
       }
     };
 
-    // 右クリック：リストから削除 (追加部分)
+    // 右クリック：リストから削除
     el.oncontextmenu = (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -90,6 +133,7 @@ function renderRecentFiles() {
       recentFiles = recentFiles.filter(p => p !== path);
       localStorage.setItem('recentFiles', JSON.stringify(recentFiles));
       renderRecentFiles();
+      saveCurrentSession(); // 状態保存を追加
     };
   });
 }
@@ -112,12 +156,14 @@ function renderTabs() {
 function switchTab(id) {
   tabs.forEach(t => t.active = (t.id === id));
   renderTabs(); UpdateDisplay(); UpdateHistory();
+  saveCurrentSession(); // 状態保存を追加
 }
 
 function addTab() {
   tabs.forEach(t => t.active = false);
   tabs.push({ id: Date.now(), workFile: '', workFileSize: 0, backupDir: '', active: true });
   renderTabs(); UpdateDisplay(); UpdateHistory();
+  saveCurrentSession(); // 状態保存を追加
 }
 
 function removeTab(id) {
@@ -126,6 +172,7 @@ function removeTab(id) {
   tabs.splice(index, 1);
   if (wasActive) tabs[Math.max(0, index - 1)].active = true;
   renderTabs(); UpdateDisplay(); UpdateHistory();
+  saveCurrentSession(); // 状態保存を追加
 }
 
 async function UpdateHistory() {
@@ -166,6 +213,9 @@ async function Initialize() {
   const data = await GetI18N();
   if (!data) return;
   i18n = data;
+
+  // 初期化時に復元を実行
+  await restoreSession();
 
   const setText = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text || ""; };
   const setQueryText = (sel, text) => { const el = document.querySelector(sel); if (el) el.textContent = text || ""; };
@@ -259,6 +309,7 @@ function setupDragAndDrop() {
         modal.classList.add('hidden');
         showFloatingMessage(msg);
         renderTabs(); UpdateDisplay(); UpdateHistory();
+        saveCurrentSession(); // ここで保存を実行
       }
     }, 200);
   }, true);
@@ -318,10 +369,20 @@ window.addEventListener('click', async (e) => {
   }
   if (id === 'workfile-btn') {
     const res = await SelectAnyFile(i18n.workFileBtn, [{ DisplayName: "Target", Pattern: "*.*" }]);
-    if (res) { tab.workFile = res; tab.workFileSize = await GetFileSize(res); addToRecentFiles(res); renderTabs(); UpdateDisplay(); UpdateHistory(); }
+    if (res) { 
+      tab.workFile = res; 
+      tab.workFileSize = await GetFileSize(res); 
+      addToRecentFiles(res); 
+      renderTabs(); UpdateDisplay(); UpdateHistory();
+      saveCurrentSession(); // 保存
+    }
   } else if (id === 'backupdir-btn') {
     const res = await SelectBackupFolder();
-    if (res) { tab.backupDir = res; UpdateDisplay(); UpdateHistory(); }
+    if (res) { 
+      tab.backupDir = res; 
+      UpdateDisplay(); UpdateHistory();
+      saveCurrentSession(); // 保存
+    }
   } else if (id === 'execute-backup-btn') { OnExecute(); }
   else if (id === 'refresh-diff-btn') { UpdateHistory(); }
   else if (id === 'select-all-btn') {

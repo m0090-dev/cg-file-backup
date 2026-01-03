@@ -97,6 +97,7 @@ func (a *App) GetI18N() map[string]string {
 }
 
 func (a *App) GetAlwaysOnTop() bool { return a.cfg.AlwaysOnTop }
+func (a *App) GetRestorePreviousState() bool {return a.cfg.RestorePreviousState}
 
 func (a *App) SetLanguage(Lang string) error {
 	a.cfg.Language = Lang
@@ -111,13 +112,28 @@ func (a *App) SetAlwaysOnTop(Flag bool) error {
 	if err != nil { return err }
 	return os.WriteFile(a.configPath, data, 0644)
 }
-
+
+func (a *App) SetRestorePreviousState(Flag bool) error {
+	a.cfg.RestorePreviousState = Flag
+	data, err := json.MarshalIndent(a.cfg, "", "  ")
+	if err != nil { return err }
+	return os.WriteFile(a.configPath, data, 0644)
+}
+
 func (a *App) setupMenu() *menu.Menu {
 	alwaysOnTopItem := menu.Checkbox(a.GetLanguageText("alwaysOnTop"), a.GetAlwaysOnTop(), nil, func(_ *menu.CallbackData) {
 		newValue := !a.GetAlwaysOnTop()
 		_ = a.SetAlwaysOnTop(newValue)
 		runtime.WindowSetAlwaysOnTop(a.ctx, newValue)
 	})
+
+	// --- 追加: 前回の状態を復元するチェックボックス ---
+	restoreStateItem := menu.Checkbox(a.GetLanguageText("restoreState"), a.GetRestorePreviousState(), nil, func(_ *menu.CallbackData) {
+		newValue := !a.GetRestorePreviousState()
+		_ = a.SetRestorePreviousState(newValue)
+	})
+	// -------------------------------------------
+
 	englishItem := menu.Radio(a.GetLanguageText("english"), a.cfg.Language == "en", nil, func(_ *menu.CallbackData) {
 		_ = a.SetLanguage("en")
 		runtime.MessageDialog(a.ctx, runtime.MessageDialogOptions{Title: "Language", Message: "Restart required."})
@@ -129,7 +145,16 @@ func (a *App) setupMenu() *menu.Menu {
 	quitItem := menu.Text(a.GetLanguageText("quit"), keys.CmdOrCtrl("q"), func(_ *menu.CallbackData) { runtime.Quit(a.ctx) })
 	
 	settingsMenu := menu.NewMenu()
-	settingsMenu.Items = []*menu.MenuItem{alwaysOnTopItem, menu.Separator(), englishItem, japaneseItem, menu.Separator(), quitItem}
+	// restoreStateItem をリストに追加しました
+	settingsMenu.Items = []*menu.MenuItem{
+		alwaysOnTopItem, 
+		restoreStateItem, // 追加箇所
+		menu.Separator(), 
+		englishItem, 
+		japaneseItem, 
+		menu.Separator(), 
+		quitItem,
+	}
 	
 	aboutMenu := menu.NewMenu()
 	aboutText := menu.Text(a.GetLanguageText("about"), keys.CmdOrCtrl("a"), func(_ *menu.CallbackData) {
@@ -140,7 +165,9 @@ func (a *App) setupMenu() *menu.Menu {
 	rootMenu := menu.NewMenu()
 	rootMenu.Items = []*menu.MenuItem{menu.SubMenu(a.GetLanguageText("settings"), settingsMenu), menu.SubMenu(a.GetLanguageText("about"), aboutMenu)}
 	return rootMenu
-}
+}
+
+
 
 
 
@@ -492,4 +519,25 @@ func (a *App) ReadTextFile(path string) (string, error) {
         return "", err
     }
     return string(b), nil
+}
+
+// GetConfigDir はOSごとの設定ディレクトリパスを返します
+func (a *App) GetConfigDir() string {
+	// OS標準の設定ディレクトリを取得 (Windows: %AppData%, macOS: ~/Library/Application Support, Linux: ~/.config)
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		// 取得失敗時のフォールバック（カレントディレクトリなど）
+		return "./config"
+	}
+
+	// アプリ専用のサブフォルダ名（アプリ名に合わせて変更してください）
+	appFolderName := "cg-file-backup"
+	fullPath := filepath.Join(configDir, appFolderName)
+
+	// ディレクトリが存在しない場合は作成しておく
+	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+		_ = os.MkdirAll(fullPath, 0755)
+	}
+
+	return fullPath
 }

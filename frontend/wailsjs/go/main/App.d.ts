@@ -33,6 +33,8 @@ export function GetBackupList(arg1:string,arg2:string):Promise<Array<main.Backup
 
 export function GetConfig():Promise<main.AppConfig>;
 
+export function GetConfigDir():Promise<string>;
+
 export function GetFileSize(arg1:string):Promise<number>;
 
 export function GetHdiffList(arg1:string,arg2:string):Promise<Array<main.DiffFileInfo>>;
@@ -40,6 +42,8 @@ export function GetHdiffList(arg1:string,arg2:string):Promise<Array<main.DiffFil
 export function GetI18N():Promise<Record<string, string>>;
 
 export function GetLanguageText(arg1:string):Promise<string>;
+
+export function GetRestorePreviousState():Promise<boolean>;
 
 export function OpenDirectory(arg1:string):Promise<void>;
 
@@ -58,5 +62,7 @@ export function SelectBackupFolder():Promise<string>;
 export function SetAlwaysOnTop(arg1:boolean):Promise<void>;
 
 export function SetLanguage(arg1:string):Promise<void>;
+
+export function SetRestorePreviousState(arg1:boolean):Promise<void>;
 
 export function WriteTextFile(arg1:string,arg2:string):Promise<void>;

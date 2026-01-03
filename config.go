@@ -7,6 +7,7 @@ type AppConfig struct {
     Language string                         `json:"language"`
     AlwaysOnTop bool  			    `json:"alwaysOnTop"`
     AutoOpen bool 			    `json:"autoOpen"`
+    RestorePreviousState bool                        `json:"getRestoreState"`
     I18N     map[string]map[string]string  `json:"i18n"`
 
 }

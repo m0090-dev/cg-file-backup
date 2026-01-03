@@ -23,6 +23,7 @@ export namespace main {
 	    language: string;
 	    alwaysOnTop: boolean;
 	    autoOpen: boolean;
+	    getRestoreState: boolean;
 	    i18n: Record<string, any>;
 	
 	    static createFrom(source: any = {}) {
@@ -34,6 +35,7 @@ export namespace main {
 	        this.language = source["language"];
 	        this.alwaysOnTop = source["alwaysOnTop"];
 	        this.autoOpen = source["autoOpen"];
+	        this.getRestoreState = source["getRestoreState"];
 	        this.i18n = source["i18n"];
 	    }
 	}

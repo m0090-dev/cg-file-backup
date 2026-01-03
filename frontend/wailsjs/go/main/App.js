@@ -62,6 +62,10 @@ export function GetConfig() {
   return window['go']['main']['App']['GetConfig']();
 }
 
+export function GetConfigDir() {
+  return window['go']['main']['App']['GetConfigDir']();
+}
+
 export function GetFileSize(arg1) {
   return window['go']['main']['App']['GetFileSize'](arg1);
 }
@@ -76,6 +80,10 @@ export function GetI18N() {
 
 export function GetLanguageText(arg1) {
   return window['go']['main']['App']['GetLanguageText'](arg1);
+}
+
+export function GetRestorePreviousState() {
+  return window['go']['main']['App']['GetRestorePreviousState']();
 }
 
 export function OpenDirectory(arg1) {
@@ -112,6 +120,10 @@ export function SetAlwaysOnTop(arg1) {
 
 export function SetLanguage(arg1) {
   return window['go']['main']['App']['SetLanguage'](arg1);
+}
+
+export function SetRestorePreviousState(arg1) {
+  return window['go']['main']['App']['SetRestorePreviousState'](arg1);
 }
 
 export function WriteTextFile(arg1, arg2) {

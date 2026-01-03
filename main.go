@@ -31,7 +31,7 @@ func main() {
 		MinWidth:      640,
 		MinHeight:     480,
 		DisableResize: true, // レイアウトを崩さないため固定
-
+		DragAndDrop: &options.DragAndDrop{EnableFileDrop: true, DisableWebViewDrop: false},
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},

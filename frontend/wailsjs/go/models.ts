@@ -24,6 +24,7 @@ export namespace main {
 	    alwaysOnTop: boolean;
 	    autoOpen: boolean;
 	    getRestoreState: boolean;
+	    bsdiffMaxFileSize: number;
 	    i18n: Record<string, any>;
 	
 	    static createFrom(source: any = {}) {
@@ -36,6 +37,7 @@ export namespace main {
 	        this.alwaysOnTop = source["alwaysOnTop"];
 	        this.autoOpen = source["autoOpen"];
 	        this.getRestoreState = source["getRestoreState"];
+	        this.bsdiffMaxFileSize = source["bsdiffMaxFileSize"];
 	        this.i18n = source["i18n"];
 	    }
 	}

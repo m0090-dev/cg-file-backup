@@ -58,6 +58,10 @@ export function GetBackupList(arg1, arg2) {
   return window['go']['main']['App']['GetBackupList'](arg1, arg2);
 }
 
+export function GetBsdiffMaxFileSize() {
+  return window['go']['main']['App']['GetBsdiffMaxFileSize']();
+}
+
 export function GetConfig() {
   return window['go']['main']['App']['GetConfig']();
 }

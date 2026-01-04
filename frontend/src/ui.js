@@ -14,7 +14,7 @@ import {
     GetFileSize 
 } from '../wailsjs/go/main/App';
 
-import { switchTab, removeTab } from './actions';
+import { switchTab, removeTab,updateExecute } from './actions';
 
 
 // UI描画・メッセージ系
@@ -105,6 +105,7 @@ export function UpdateDisplay() {
   const isPass = (mode === 'archive' && document.getElementById('archive-format')?.value === 'zip-pass');
   const pwdArea = document.querySelector('.password-wrapper');
   if (pwdArea) { pwdArea.style.opacity = isPass ? "1" : "0.3"; document.getElementById('archive-password').disabled = !isPass; }
+  updateExecute()
 
   // Compact同期
   const cFileEl = document.getElementById('compact-selected-file');

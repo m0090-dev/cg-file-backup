@@ -31,6 +31,8 @@ export function GetAlwaysOnTop():Promise<boolean>;
 
 export function GetBackupList(arg1:string,arg2:string):Promise<Array<main.BackupItem>>;
 
+export function GetBsdiffMaxFileSize():Promise<number>;
+
 export function GetConfig():Promise<main.AppConfig>;
 
 export function GetConfigDir():Promise<string>;

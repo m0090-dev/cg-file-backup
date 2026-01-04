@@ -24,7 +24,7 @@ import {
 
 import {
   addTab,
-  OnExecute
+  OnExecute,
 } from './actions';
 
 // --- ドラッグアンドドロップの基本防止設定 ---
@@ -100,14 +100,23 @@ export function setupGlobalEvents() {
 
   // --- 変更イベントリスナー ---
   document.addEventListener('change', (e) => {
-    if (['backupMode', 'archive-format'].includes(e.target.name) || e.target.id === 'archive-format') {
+    const id = e.target.id;
+    const name = e.target.name;
+    const value = e.target.value;
+    if (['backupMode', 'archive-format'].includes(e.target.name) || id === 'archive-format') {
       UpdateDisplay();
+
     }
-    if (e.target.id === 'compact-mode-select') {
-      const radio = document.querySelector(`input[name="backupMode"][value="${e.target.value}"]`);
+    if (['backupMode', 'archive-format'].includes(name) || id === 'archive-format' || id === 'diff-algo') {
+      UpdateDisplay();
+      updateExecute();
+    }
+    if (id === 'compact-mode-select') {
+      const radio = document.querySelector(`input[name="backupMode"][value="${value}"]`);
       if (radio) { 
         radio.checked = true; 
         UpdateDisplay(); 
+	updateExecute();
       }
     }
   });

@@ -3,6 +3,7 @@
   "alwaysOnTop": false,
   "autoOpen": true,
   "restorePreviousState": true,
+  "bsdiffMaxFileSize" : 100000000,
   "i18n": {
     "en": {
       "settings": "Settings",

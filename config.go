@@ -8,6 +8,7 @@ type AppConfig struct {
     AlwaysOnTop bool  			    `json:"alwaysOnTop"`
     AutoOpen bool 			    `json:"autoOpen"`
     RestorePreviousState bool               `json:"getRestoreState"`
+    BsdiffMaxFileSize int64                 `json:"bsdiffMaxFileSize"`
     I18N     map[string]map[string]string  `json:"i18n"`
 }
 

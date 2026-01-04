@@ -126,6 +126,10 @@ export function SetRestorePreviousState(arg1) {
   return window['go']['main']['App']['SetRestorePreviousState'](arg1);
 }
 
+export function ToggleCompactMode(arg1) {
+  return window['go']['main']['App']['ToggleCompactMode'](arg1);
+}
+
 export function WriteTextFile(arg1, arg2) {
   return window['go']['main']['App']['WriteTextFile'](arg1, arg2);
 }

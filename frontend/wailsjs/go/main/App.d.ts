@@ -65,4 +65,6 @@ export function SetLanguage(arg1:string):Promise<void>;
 
 export function SetRestorePreviousState(arg1:boolean):Promise<void>;
 
+export function ToggleCompactMode(arg1:boolean):Promise<void>;
+
 export function WriteTextFile(arg1:string,arg2:string):Promise<void>;

@@ -291,9 +291,9 @@ h3 {
 
 .history-controls { display: flex; gap: 6px; padding-top: 8px; flex-shrink: 0; }
 .history-controls button {
-    flex: 1; padding: 6px; font-size: 10px; background-color: var(--primary-blue); color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;
+    flex: 1; padding: 6px; font-size: 10px; background-color: #2C3E50; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;
 }
-.primary-btn { background-color: #e67e22 !important; }
+.primary-btn { background-color: #db741f !important; }
 
 /* --- プログレス・メッセージ --- */
 #progress-container {

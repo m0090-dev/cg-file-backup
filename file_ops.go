@@ -71,7 +71,9 @@ func (a *App) GetBackupList(workFile, backupDir string) ([]BackupItem, error) {
 		isValidExt := false
 		if strings.HasSuffix(name, ".diff") ||
 			strings.HasSuffix(name, ".zip") ||
-			strings.HasSuffix(name, ".tar.gz") {
+			strings.HasSuffix(name, ".tar.gz") || 
+			strings.HasSuffix(name,".tar") ||
+			strings.HasSuffix(name,".gz") {
 			isValidExt = true
 		}
 

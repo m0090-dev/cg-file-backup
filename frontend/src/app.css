@@ -6,7 +6,13 @@
     --bg-light: #f0f2f5;
 }
 
-* { box-sizing: border-box; }
+* { 
+	box-sizing: border-box; 
+	-webkit-user-drag: none;
+}
+[data-wails-drop-target] {
+    -webkit-dropzone: none;
+}
 
 body, html {
     height: 100vh;
@@ -285,9 +291,9 @@ h3 {
 
 .history-controls { display: flex; gap: 6px; padding-top: 8px; flex-shrink: 0; }
 .history-controls button {
-    flex: 1; padding: 6px; font-size: 10px; background-color: var(--primary-blue); color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;
+    flex: 1; padding: 6px; font-size: 10px; background-color: #2C3E50; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;
 }
-.primary-btn { background-color: #e67e22 !important; }
+.primary-btn { background-color: #db741f !important; }
 
 /* --- プログレス・メッセージ --- */
 #progress-container {
@@ -350,3 +356,32 @@ h3 {
 .modal-btn.primary { background: var(--primary-blue); }
 .modal-btn.secondary { background: var(--success-green); }
 .modal-btn.cancel { background: #6c757d; }
+
+
+/* --- コンパクトモード時のスタイル：最小限バージョン --- */
+body.compact-mode {
+    /* 100vw/vh だと大きなキャンバスを維持しようとするので、
+       親（ウィンドウ）のサイズに従うように auto にする */
+    width: auto !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+}
+
+body.compact-mode .container {
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    /* 必要ならパディングを調整して中身を中央に寄せる */
+}
+
+/* 描画を壊さないためにメイングリッドなどは消す */
+body.compact-mode .main-grid,
+body.compact-mode .tabs-bar {
+    display: none !important;
+}
+#compact-view.hidden { display: none !important; }
+body.compact-mode .container { display: none !important; }
+body.compact-mode #compact-view { display: block !important; }

@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
@@ -28,10 +27,10 @@ func main() {
 		// ツールボックスとしての黄金比 (横長コンパクト)
 		Width:         660,
 		Height:        500,
-		MinWidth:      640,
-		MinHeight:     480,
-		DisableResize: true, // レイアウトを崩さないため固定
-		DragAndDrop: &options.DragAndDrop{EnableFileDrop: true, DisableWebViewDrop: false},
+		MinWidth:      100,
+		MinHeight:     100,
+		DisableResize: false,   
+		DragAndDrop: &options.DragAndDrop{EnableFileDrop: true, DisableWebViewDrop: false},
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},

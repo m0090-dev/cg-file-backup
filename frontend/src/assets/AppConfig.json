@@ -9,13 +9,13 @@
       "alwaysOnTop": "Always On Top",
       "restoreState": "Restore Previous State",
       "autoOpen": "Open Folder after backup",
-      "workFileBtn": "Select Work File",
+      "workFileBtn": "Change Work file",
       "backupDirBtn": "Select Backup Folder",
       "copyBackupBtn": "Full Backup",
       "archiveBtn": "Archive Backup",
       "diffBackupBtn": "Smart Diff Backup",
-      "executeBtn": "Execute Backup",
-      "selectedWorkFile": "Not Selected",
+      "executeBtn": "EXECUTE",
+      "selectedWorkFile": "No File Selected",
       "selectedBackupDir": "Default Location",
       "copyBackupSuccess": "Full backup created successfully.",
       "archiveBackupSuccess": "Archive ({format}) created successfully.",
@@ -37,6 +37,7 @@
       "restoreConfirm": "Restore selected versions? This will create a new file.",
       "restoreError": "Restore Failed",
       "scanning": "Scanning...",
+      "processingMsg": "Processing...",
       "targetLabel": "Target:",
       "locationLabel": "Location:",
       "newBackupTitle": "Create New Backup",
@@ -54,14 +55,16 @@
       "updatedWorkFile": "Updated Work File",
       "updatedBackupDir": "Updated Backup Directory",
       "diffTitle": "Diff (Smart)",
-      "diffDesc": "Save only changes"
+      "diffDesc": "Save only changes",
+      "compactMode": "Compact Mode",
+      "compactTitle": "Compact Mode"
     },
     "ja": {
       "settings": "設定",
       "alwaysOnTop": "最前面に表示",
       "restoreState": "前回の状態を復元する",
       "autoOpen": "完了後にフォルダを開く",
-      "workFileBtn": "作業ファイル選択",
+      "workFileBtn": "作業ファイル変更",
       "backupDirBtn": "保存先フォルダ選択",
       "copyBackupBtn": "フルバックアップ",
       "archiveBtn": "アーカイブ作成",
@@ -89,6 +92,7 @@
       "restoreConfirm": "選択したバージョンを復元しますか？新しいファイルが生成されます。",
       "restoreError": "復元失敗",
       "scanning": "スキャン中...",
+      "processingMsg": "処理中...",
       "targetLabel": "対象:",
       "locationLabel": "保存先:",
       "newBackupTitle": "新規バックアップ作成",
@@ -106,7 +110,9 @@
       "updatedWorkFile": "作業ファイルを更新しました",
       "updatedBackupDir": "保存先フォルダを更新しました",
       "diffTitle": "差分 (スマート)",
-      "diffDesc": "差分のみを保存"
+      "diffDesc": "差分のみを保存",
+      "compactMode": "コンパクトモード",
+      "compactTitle": "コンパクトモード"
     }
   }
 }

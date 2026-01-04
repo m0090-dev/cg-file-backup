@@ -617,30 +617,28 @@ func (a *App) GetConfigDir() string {
 	return fullPath
 }
 
+
+
 func (a *App) ToggleCompactMode(isCompact bool) {
+	// 共通：一度リセットして操作を受け付けやすくする
+	runtime.WindowSetMinSize(a.ctx, 0, 0)
+	runtime.WindowSetMaxSize(a.ctx, 0, 0)
+	runtime.WindowUnmaximise(a.ctx)
+
 	if isCompact {
-		// 1. まず現在の制約を完全にリセット
-		runtime.WindowSetMinSize(a.ctx, 0, 0)
-		runtime.WindowSetMaxSize(a.ctx, 0, 0)
-		runtime.WindowUnmaximise(a.ctx)
-
-		// 2. サイズを変更
-		// 注意: Windowsの場合、あまりに小さいサイズ(200以下など)は
-		// OSのウィンドウ最小サイズ制限で弾かれることがあるので、300x200程度が安全です
-		runtime.WindowSetSize(a.ctx, 300, 200)
+		// コンパクトモードの設定 (300x200固定)
+		width, height := 300, 240
+		runtime.WindowSetSize(a.ctx, width, height)
 		runtime.WindowSetTitle(a.ctx, "cg-file-backup (Compact mode)")
-
-		// 3. コンパクトモード中に勝手に広げられないよう、必要ならここでMin/Maxを固定する
-		runtime.WindowSetMinSize(a.ctx, 300, 200)
-		runtime.WindowSetMaxSize(a.ctx, 300, 200)
-
+		runtime.WindowSetMinSize(a.ctx, width, height)
+		runtime.WindowSetMaxSize(a.ctx, width, height)
 	} else {
-		// 通常モードに戻す際も同様にリセットから入る
-		runtime.WindowSetMinSize(a.ctx, 0, 0)
-		runtime.WindowSetMaxSize(a.ctx, 0, 0)
-
-		runtime.WindowSetSize(a.ctx, 660, 500)
-		runtime.WindowSetMinSize(a.ctx, 640, 480) // 復元後に最小サイズを再設定
+		// 通常モードの設定 (660x500固定)
+		// ここを 0, 0 にせず、現在のサイズで固定するのがポイントです
+		width, height := 660, 500
+		runtime.WindowSetSize(a.ctx, width, height)
 		runtime.WindowSetTitle(a.ctx, "cg-file-backup")
+		runtime.WindowSetMinSize(a.ctx, width, height)
+		runtime.WindowSetMaxSize(a.ctx, width, height)
 	}
 }

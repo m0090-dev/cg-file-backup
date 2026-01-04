@@ -27,8 +27,10 @@ func main() {
 		// ツールボックスとしての黄金比 (横長コンパクト)
 		Width:         660,
 		Height:        500,
-		MinWidth:      100,
-		MinHeight:     100,
+		MaxWidth: 660,
+		MaxHeight: 500,
+		MinWidth:      660,
+		MinHeight:     500,
 		DisableResize: false,   
 		DragAndDrop: &options.DragAndDrop{EnableFileDrop: true, DisableWebViewDrop: false},
 		AssetServer: &assetserver.Options{

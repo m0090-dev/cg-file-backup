@@ -21,8 +21,11 @@ const preventDefault = (e) => {
   e.preventDefault();
   e.stopPropagation();
 };
-window.addEventListener('dragover', preventDefault, true);
-window.addEventListener('drop', preventDefault, true);
+// Bug that prevents dragging on Windows
+//window.addEventListener('dragover', preventDefault, true);
+//window.addEventListener('drop', preventDefault, true);
+
+// Only this
 window.addEventListener('dragenter', preventDefault, true);
 
 // --- 状態管理 ---

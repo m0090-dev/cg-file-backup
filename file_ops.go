@@ -55,6 +55,9 @@ func (a *App) GetBackupList(workFile, backupDir string) ([]BackupItem, error) {
 	var list []BackupItem
 	baseNameOnly := strings.TrimSuffix(filepath.Base(workFile), filepath.Ext(workFile))
 
+	// 許可する拡張子のリスト
+	validExts := []string{".diff", ".zip", ".tar.gz", ".tar", ".gz"}
+
 	for _, f := range files {
 		if f.IsDir() {
 			continue
@@ -67,21 +70,19 @@ func (a *App) GetBackupList(workFile, backupDir string) ([]BackupItem, error) {
 		}
 
 		// 2. 拡張子のフィルタリング
-		// .tar.gz は特殊なので、HasSuffix で判定するのが確実です
 		isValidExt := false
-		if strings.HasSuffix(name, ".diff") ||
-			strings.HasSuffix(name, ".zip") ||
-			strings.HasSuffix(name, ".tar.gz") || 
-			strings.HasSuffix(name,".tar") ||
-			strings.HasSuffix(name,".gz") {
-			isValidExt = true
+		for _, ext := range validExts {
+			if strings.HasSuffix(name, ext) {
+				isValidExt = true
+				break 
+			}
 		}
 
 		if isValidExt {
 			info, err := f.Info()
 			if err != nil {
 				continue
-			} // 情報が取得できない場合はスキップ
+			}
 
 			list = append(list, BackupItem{
 				FileName:  name,
@@ -93,6 +94,9 @@ func (a *App) GetBackupList(workFile, backupDir string) ([]BackupItem, error) {
 	}
 	return list, nil
 }
+
+
+
 
 // CopyBackupFile はファイルをそのままコピーします
 func (a *App) CopyBackupFile(src, backupDir string) error {

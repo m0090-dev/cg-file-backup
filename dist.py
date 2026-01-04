@@ -2,7 +2,54 @@ import os
 import sys
 import shutil
 import argparse
-import subprocess
+import subprocess
+import json
+import re
+
+def update_app_config_version():
+    wails_path = 'wails.json'
+    config_path = 'frontend/src/assets/AppConfig.json'
+
+    # 1. wails.json からバージョンを取得
+    try:
+        with open(wails_path, 'r', encoding='utf-8') as f:
+            wails_data = json.load(f)
+            new_version = wails_data.get("info", {}).get("productVersion")
+            
+        if not new_version:
+            print("Error: wails.json 内に productVersion が見つかりませんでした。")
+            return
+    except FileNotFoundError:
+        print(f"Error: {wails_path} が見つかりません。")
+        return
+
+    # 2. AppConfig.json を読み込み
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config_data = json.load(f)
+
+        # 3. i18n 内の各言語の aboutText を更新
+        # \1 ではなく \g<1> を使うことで、直後に数字が来ても正しく分離されます
+        target_pattern = r"([a-zA-Z0-9_-]+\s)([0-9.]+)(\([0-9]+\))"
+        replacement = rf"\g<1>{new_version}\g<3>"
+
+        if "i18n" in config_data:
+            for lang in config_data["i18n"]:
+                about_text = config_data["i18n"][lang].get("aboutText", "")
+                if about_text:
+                    # 置換実行
+                    updated_text = re.sub(target_pattern, replacement, about_text)
+                    config_data["i18n"][lang]["aboutText"] = updated_text
+
+        # 4. AppConfig.json に書き戻し
+        with open(config_path, 'w', encoding='utf-8') as f:
+            json.dump(config_data, f, indent=2, ensure_ascii=False)
+        
+        print(f"Success: AppConfig.json をバージョン {new_version} に更新しました。")
+
+    except Exception as e:
+        print(f"Error: 予期せぬエラーが発生しました: {e}")
+
 
 def create_release_package():
     # 1. 引数の設定
@@ -139,4 +186,5 @@ Description: {project_name} backup tool
     print("--- Done! ---")
 
 if __name__ == "__main__":
+    update_app_config_version()
     create_release_package()

@@ -143,13 +143,15 @@ export async function UpdateHistory() {
 
     // もし tab.selectedTargetDir が完全に「空」の時だけ、最新を仮表示として採用する
     // ※ ここで tab.selectedTargetDir = ... と代入しないのがミソです
+
     if (!activeDirPath) {
         const first = data[0];
-	{
-            activeDirPath = first.filePath.substring(0, first.filePath.lastIndexOf('/')) 
-                         || first.filePath.substring(0, first.filePath.lastIndexOf('\\'));
-        }
+        // OSを問わず、最後のスラッシュ（/ または \）より前を抽出する
+        activeDirPath = first.filePath.replace(/[\\/][^\\/]+$/, "");
     }
+
+
+
 
     const itemsHtml = await Promise.all(data.map(async (item) => {
       const note = await ReadTextFile(item.filePath + ".note").catch(() => "");
@@ -213,6 +215,7 @@ export async function UpdateHistory() {
             e.stopPropagation();
             // ユーザーの意思を tab.selectedTargetDir に叩き込む
             tab.selectedTargetDir = el.getAttribute('data-dir');
+	    saveCurrentSession();
             UpdateHistory(); 
         });
     });

@@ -113,7 +113,6 @@ export function UpdateDisplay() {
   const cSel = document.getElementById('compact-mode-select');
   if (cSel && mode) cSel.value = mode;
 }
-
 export async function UpdateHistory() {
   const tab = getActiveTab();
   const list = document.getElementById('diff-history-list');
@@ -130,56 +129,55 @@ export async function UpdateHistory() {
       return; 
     }
     
-    // ファイル名でソート（既存維持）
     data.sort((a, b) => b.fileName.localeCompare(a.fileName));
     
     const itemsHtml = await Promise.all(data.map(async (item) => {
       const note = await ReadTextFile(item.filePath + ".note").catch(() => "");
       
-      // --- 世代・整合性情報の組み立て ---
-      const isArchive = item.generation === 0;
+      // --- 修正ポイント: アーカイブ判定の厳格化 ---
+      // 拡張子が .diff ではなく、かつ generation が 0 の場合のみアーカイブとする
+      const isDiffFile = item.fileName.toLowerCase().endsWith('.diff');
+      const isArchive = !isDiffFile && item.generation === 0;
+
       let statusHtml = "";
       let genBadge = "";
 
       if (isArchive) {
-        // ルート直下のアーカイブ用表示
+        // フルバックアップ（アーカイブ）の表示
         const archiveText = i18n.fullArchive || "📦 Full Archive (独立復元可能)";
         statusHtml = `<div style="color:#2f8f5b; font-weight:bold;">${archiveText}</div>`;
         genBadge = `<span style="font-size:10px; color:#fff; background:#2f8f5b; padding:1px 4px; border-radius:3px; margin-left:5px;">Archive</span>`;
       } else {
-        // baseN フォルダ内の差分ファイル用表示
-        let statusColor = "#e74c3c"; // Default: Red
+        // 差分ファイルの表示
+        let statusColor = "#e74c3c";
         let statusIcon = "⚠️";
         let statusText = "";
 
-        // 1. まずチェックサムファイルの有無を確認
         if (item.foundCheckSumFile === false) {
-          statusColor = "#f39c12"; // Orange: Warning for missing meta
+          statusColor = "#f39c12"; 
           statusIcon = "❓";
           statusText = i18n.noChecksum || "整合性不明 (設定ファイル紛失)";
         } 
-        // 2. チェックサムはあるが、中身が不整合な場合
         else if (!item.isCompatible) {
-          statusColor = "#e74c3c"; // Red: Error for mismatch
+          statusColor = "#e74c3c"; 
           statusIcon = "⚠️";
           statusText = i18n.genMismatch || "世代が異なります (Base不一致)";
         } 
-        // 3. すべてクリア（整合性あり）
         else {
-          statusColor = "#2f8f5b"; // Green: OK
+          statusColor = "#2f8f5b"; 
           statusIcon = "✅";
           statusText = i18n.compatible || "互換性あり";
         }
         
         const genLabel = i18n.generationLabel || "Generation";
+        const currentGen = item.generation || 1; // 0の場合は暫定的に1として表示
         
         statusHtml = `<div style="color:${statusColor}; font-weight:bold;">${statusIcon} ${statusText}</div>
-                      <div style="font-size:11px; color:#666;">${genLabel}: ${item.generation}</div>`;
+                      <div style="font-size:11px; color:#666;">${genLabel}: ${currentGen}</div>`;
         
-        genBadge = `<span style="font-size:10px; color:#fff; background:${statusColor}; padding:1px 4px; border-radius:3px; margin-left:5px;">Gen.${item.generation}</span>`;
+        genBadge = `<span style="font-size:10px; color:#fff; background:${statusColor}; padding:1px 4px; border-radius:3px; margin-left:5px;">Gen.${currentGen}</span>`;
       }
 
-      // ポップアップ内に表示するHTML
       const popupContent = `
         ${statusHtml}
         <hr style="border:0; border-top:1px solid #eee; margin:5px 0;">
@@ -196,17 +194,15 @@ export async function UpdateHistory() {
                   ${item.fileName} ${genBadge} <span style="font-size:10px; color:#3B5998;">(${formatSize(item.FileSize)})</span>
                 </span>
                 <span style="font-size:10px; color:#888;">${item.timestamp}</span>
-                ${note ? `<div style="font-size:10px; color:#2f8f5b; font-style:italic; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"> ${note}</div>` : ''}
+                ${note ? `<div style="font-size:10px; color:#2f8f5b; font-style:italic; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">📝 ${note}</div>` : ''}
               </div>
             </label>
-            <button class="note-btn" data-path="${item.filePath}" style="background:none; border:none; cursor:pointer; font-size:14px; padding:4px;"></button>
+            <button class="note-btn" data-path="${item.filePath}" style="background:none; border:none; cursor:pointer; font-size:14px; padding:4px;">📝</button>
           </div>
         </div>`;
     }));
     
     list.innerHTML = itemsHtml.join('');
-
-    // ポップアップイベントの登録
     setupHistoryPopups();
 
   } catch (err) { 
@@ -214,8 +210,6 @@ export async function UpdateHistory() {
     list.innerHTML = `<div class="info-msg" style="color:red;">Error: ${err.message || 'loading history'}</div>`; 
   }
 }
-
-
 
 function setupHistoryPopups() {
   const tooltip = document.getElementById('custom-tooltip') || createTooltipElement();

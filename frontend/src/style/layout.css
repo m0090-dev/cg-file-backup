@@ -98,6 +98,7 @@ h3 {
     max-height: calc(94vh - 180px); 
     height: 0;
     min-height: 0;
+    min-width: 0 ;
     overflow: auto; 
     width: 100%;
     box-sizing: border-box; 
@@ -106,14 +107,6 @@ h3 {
     background-color: #fff;
 }
 
-.diff-item { 
-    padding: 6px 8px; 
-    border-bottom: 1px solid #eee; 
-    font-size: 11px; 
-    white-space: nowrap;
-}
-.diff-item:hover { background-color: #f0f7ff; }
-.diff-name { color: #111; }
 
 /* --- 下部：実行・コントロールエリア --- */
 .execute-area { width: 100%; margin-top: 8px; flex-shrink: 0; }
@@ -123,3 +116,23 @@ h3 {
     flex: 1; padding: 6px; font-size: 10px; background-color: #2C3E50; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;
 }
 .primary-btn { background-color: #db741f !important; }
+
+.diff-item { 
+    padding: 6px 8px; 
+    border-bottom: 1px solid #eee; 
+    font-size: 11px; 
+    white-space: nowrap;
+    /* 修正ポイント */
+    display: flex;
+    align-items: center;
+    width: max-content; /* 重要：中身の幅に合わせる（100%にしない） */
+    min-width: 100%;    /* 重要：中身が少ない時は親の幅いっぱいに背景色を塗る */
+    box-sizing: border-box;
+}
+.diff-item:hover { background-color: #f0f7ff; }
+.diff-name { 
+    color: #111;
+    display: flex;
+    align-items: center;
+    gap: 5px; /* バッジとの間隔 */ 
+}

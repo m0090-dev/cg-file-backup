@@ -1,5 +1,6 @@
 package main
 import (
+	"fmt"
 	"os"
 	"io"
 	"strings"
@@ -113,7 +114,6 @@ func (a *App) GetBackupList(workFile, backupDir string) ([]BackupItem, error) {
 		if f.IsDir() { continue }
 		name := f.Name()
 		if !strings.Contains(name, baseNameOnly) { continue }
-
 		if a.isValidBackupExt(name, validExts) {
 			info, _ := f.Info()
 			list = append(list, BackupItem{
@@ -121,18 +121,28 @@ func (a *App) GetBackupList(workFile, backupDir string) ([]BackupItem, error) {
 				FilePath:     filepath.Join(root, name),
 				Timestamp:    info.ModTime().Format("2006-01-02 15:04:05"),
 				FileSize:     info.Size(),
-				Generation:   0,    // アーカイブは 0
-				IsCompatible: true, // 独立ファイルなので常に復元可能
-				FoundCheckSumFile: true, // アーカイブにチェックサムファイルは不要なためtrue扱い
+				Generation:   0,
+				IsCompatible: true,
+				FoundCheckSumFile: true,
 			})
 		}
 	}
 
-	// --- 2. 最新の世代フォルダ(baseN)内をスキャン ---
-	latestGenDir, latestIdx := a.FindLatestBaseDir(root)
-	if latestGenDir != "" {
-		// checksum.json の存在を確認
-		checkPath := filepath.Join(latestGenDir, "checksum.json")
+	// --- 2. すべての世代フォルダ(base*)をスキャン ---
+	dirs, _ := os.ReadDir(root)
+	for _, d := range dirs {
+		if !d.IsDir() || !strings.HasPrefix(d.Name(), "base") {
+			continue
+		}
+
+		// フォルダ名から数値を取得 (base1 -> 1)
+		genIdx := 0
+		fmt.Sscanf(d.Name(), "base%d", &genIdx)
+		
+		genDir := filepath.Join(root, d.Name())
+		
+		// そのフォルダ専用の整合性チェック
+		checkPath := filepath.Join(genDir, "checksum.json")
 		foundJson := false
 		if _, err := os.Stat(checkPath); err == nil {
 			foundJson = true
@@ -140,32 +150,33 @@ func (a *App) GetBackupList(workFile, backupDir string) ([]BackupItem, error) {
 
 		var isCompatible bool
 		if foundJson {
-			// JSONがある場合のみ、中身のハッシュチェックを行う（既存ロジック）
-			isWorkMatch := a.IsGenerationCompatible(workFile, latestGenDir)
-			baseFull := filepath.Join(latestGenDir, filepath.Base(workFile)+".base")
-			isBaseMatch := a.isPhysicalBaseMatch(baseFull, latestGenDir)
+			// そのフォルダ(baseN)の基準と今の作業ファイルが合うか判定
+			isWorkMatch := a.IsGenerationCompatible(workFile, genDir)
+			baseFull := filepath.Join(genDir, filepath.Base(workFile)+".base")
+			isBaseMatch := a.isPhysicalBaseMatch(baseFull, genDir)
 			isCompatible = isWorkMatch && isBaseMatch
 		} else {
-			// JSONがない場合は、整合性を保証できないため一律 false
 			isCompatible = false
 		}
 
-		genFiles, _ := os.ReadDir(latestGenDir)
+		// フォルダ内のファイルをリストに追加
+		genFiles, _ := os.ReadDir(genDir)
 		for _, f := range genFiles {
-			if f.IsDir() { continue }
+			if f.IsDir() || filepath.Ext(f.Name()) == ".base" || f.Name() == "checksum.json" {
+				continue
+			}
 			name := f.Name()
 			if !strings.Contains(name, baseNameOnly) { continue }
-
 			if a.isValidBackupExt(name, validExts) {
 				info, _ := f.Info()
 				list = append(list, BackupItem{
 					FileName:          name,
-					FilePath:          filepath.Join(latestGenDir, name),
+					FilePath:          filepath.Join(genDir, name),
 					Timestamp:         info.ModTime().Format("2006-01-02 15:04:05"),
 					FileSize:          info.Size(),
-					Generation:        latestIdx,
+					Generation:        genIdx,
 					IsCompatible:      isCompatible,
-					FoundCheckSumFile: foundJson, // ここに存在判定をセット
+					FoundCheckSumFile: foundJson,
 				})
 			}
 		}
@@ -173,7 +184,6 @@ func (a *App) GetBackupList(workFile, backupDir string) ([]BackupItem, error) {
 
 	return list, nil
 }
-
 
 // 物理的な .base ファイルが JSON の記録と一致するかチェックするヘルパー
 func (a *App) isPhysicalBaseMatch(basePath, genDirPath string) bool {

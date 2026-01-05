@@ -112,9 +112,20 @@ func (a *App) BackupOrDiff(workFile, customDir, algo string) error {
 	workStat, _ := os.Stat(workFile)
 	diffStat, _ := os.Stat(tempDiff)
 	threshold := a.GetAutoBaseGenerationThreshold()
-	if threshold <= 0 { threshold = 0.8 }
+	workSize := workStat.Size()
+	diffSize := diffStat.Size()
 
-	if float64(diffStat.Size()) > float64(workStat.Size())*threshold {
+	if threshold <= 0 { threshold = 0.8 }
+	
+	shouldNextGen := false
+	if workSize > 100*1024 { // 100KBより大きい場合のみ閾値判定
+		if float64(diffSize) > float64(workSize)*threshold {
+			shouldNextGen = true
+		}
+	}
+	
+	if shouldNextGen {
+	
 		// --- 3a. 【サイズ超過】 世代交代ロジック ---
 		os.Remove(tempDiff)
 

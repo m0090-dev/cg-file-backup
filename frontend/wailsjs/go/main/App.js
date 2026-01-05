@@ -54,6 +54,10 @@ export function CreateNewGeneration(arg1, arg2, arg3) {
   return window['go']['main']['App']['CreateNewGeneration'](arg1, arg2, arg3);
 }
 
+export function DirExists(arg1) {
+  return window['go']['main']['App']['DirExists'](arg1);
+}
+
 export function FindLatestBaseDir(arg1) {
   return window['go']['main']['App']['FindLatestBaseDir'](arg1);
 }
@@ -100,6 +104,10 @@ export function GetLanguageText(arg1) {
 
 export function GetRestorePreviousState() {
   return window['go']['main']['App']['GetRestorePreviousState']();
+}
+
+export function IsBaseAvailable(arg1, arg2) {
+  return window['go']['main']['App']['IsBaseAvailable'](arg1, arg2);
 }
 
 export function OpenDirectory(arg1) {

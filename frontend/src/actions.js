@@ -4,7 +4,8 @@ import {
   BackupOrDiff,
   RestoreBackup,
   GetFileSize,
-  GetBsdiffMaxFileSize
+  GetBsdiffMaxFileSize,
+  IsBaseAvailable
 } from '../wailsjs/go/main/App';
 
 import {
@@ -82,11 +83,13 @@ export async function OnExecute() {
   const tab = getActiveTab();
   if (!tab?.workFile) { alert(i18n.selectFileFirst); return; }
 
+  // モードの取得（通常・コンパクト両対応）
   let mode = document.querySelector('input[name="backupMode"]:checked')?.value;
   if (document.body.classList.contains('compact-mode')) {
     mode = document.getElementById('compact-mode-select').value;
   }
 
+  // ファイルサイズ制限チェック（bsdiff用）
   if (mode === 'diff' && document.getElementById('diff-algo').value === 'bsdiff') {
     if (tab.workFileSize > bsdiffLimit) {
       alert(`${i18n.fileTooLarge} (Limit: ${Math.floor(bsdiffLimit / 1000000)}MB)`);
@@ -95,54 +98,54 @@ export async function OnExecute() {
   }
 
   toggleProgress(true, i18n.processingMsg);
+  
   try {
     let successText = "";
+
+    // --- 1. 単純コピーモード ---
     if (mode === 'copy') { 
       await CopyBackupFile(tab.workFile, tab.backupDir); 
       successText = i18n.copyBackupSuccess; 
     }
+    // --- 2. アーカイブモード ---
     else if (mode === 'archive') {
       let fmt = document.getElementById('archive-format').value;
       let pwd = (fmt === "zip-pass") ? document.getElementById('archive-password').value : "";
       if (fmt === "zip-pass") fmt = "zip";
       await ArchiveBackupFile(tab.workFile, tab.backupDir, fmt, pwd);
       successText = i18n.archiveBackupSuccess.replace('{format}', fmt.toUpperCase());
-    } else if (mode === 'diff') {
+    } 
+    // --- 3. 差分バックアップモード ---
+    else if (mode === 'diff') {
       const algo = document.getElementById('diff-algo').value;
 
-      // --- 【修正】生存確認ロジック ---
-      // 手動選択(tab.selectedTargetDir)がある場合、そのフォルダがまだ生きているか確認
+      // --- 【最終改善】フォルダ＋Baseファイルの生存確認 ---
       if (tab.selectedTargetDir) {
-        try {
-          // GetBackupListを使って、指定フォルダ内にベースや差分が存在するかチェック
-          const check = await GetBackupList(tab.workFile, tab.selectedTargetDir);
-          // フォルダが消されている、あるいは中身が空（ベースもない）なら、自動計算へ
-          if (!check || check.length === 0) {
-            tab.selectedTargetDir = ""; 
-          }
-        } catch (e) {
-          // フォルダアクセス自体がエラーになる場合も自動計算へ
-          tab.selectedTargetDir = "";
+        // Go側の新関数: フォルダが存在し、かつ中に対応する .base があるかチェック
+        const baseReady = await IsBaseAvailable(tab.selectedTargetDir, tab.workFile);
+        
+        if (!baseReady) {
+          console.log("Specified base or directory not found. Reverting to auto-discovery.");
+          // 物理的にベースがないなら、この世代への書き込みは不可能なのでリセット
+          tab.selectedTargetDir = ""; 
         }
       }
 
+      // 存在するなら指定パス、なければ親ディレクトリ（Go側で最新を自動検索/作成）
       const targetPath = tab.selectedTargetDir || tab.backupDir;
-      // -----------------------------
-
+      
       await BackupOrDiff(tab.workFile, targetPath, algo);
       successText = `${i18n.diffBackupSuccess} (${algo.toUpperCase()})`;
     }
     
     toggleProgress(false); 
     showFloatingMessage(successText); 
-    UpdateHistory();
+    UpdateHistory(); // 最新の状態に履歴表示を更新
   } catch (err) { 
     toggleProgress(false); 
     alert(err); 
   }
 }
-
-
 // --- 復元・適用ロジック ---
 export async function applySelectedBackups() {
   const tab = getActiveTab();

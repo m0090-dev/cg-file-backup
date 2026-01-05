@@ -29,6 +29,8 @@ export function CreateHdiff(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function CreateNewGeneration(arg1:string,arg2:number,arg3:string):Promise<string>;
 
+export function DirExists(arg1:string):Promise<boolean>;
+
 export function FindLatestBaseDir(arg1:string):Promise<string|number>;
 
 export function GetAlwaysOnTop():Promise<boolean>;
@@ -52,6 +54,8 @@ export function GetI18N():Promise<Record<string, string>>;
 export function GetLanguageText(arg1:string):Promise<string>;
 
 export function GetRestorePreviousState():Promise<boolean>;
+
+export function IsBaseAvailable(arg1:string,arg2:string):Promise<boolean>;
 
 export function OpenDirectory(arg1:string):Promise<void>;
 

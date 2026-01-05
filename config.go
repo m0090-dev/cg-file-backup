@@ -9,6 +9,7 @@ type AppConfig struct {
     AutoOpen bool 			    `json:"autoOpen"`
     RestorePreviousState bool               `json:"getRestoreState"`
     BsdiffMaxFileSize int64                 `json:"bsdiffMaxFileSize"`
+    AutoBaseGenerationThreshold float64     `json:"autoBaseGenerationThreshold"`
     I18N     map[string]map[string]string  `json:"i18n"`
 }
 

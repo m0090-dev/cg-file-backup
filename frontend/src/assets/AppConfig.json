@@ -4,6 +4,7 @@
   "autoOpen": true,
   "restorePreviousState": true,
   "bsdiffMaxFileSize": 100000000,
+  "autoBaseGenerationThreshold": 0.8,
   "i18n": {
     "en": {
       "settings": "Settings",
@@ -33,7 +34,7 @@
       "japanese": "Japanese",
       "restartRequired": "Language change will take effect after restart.",
       "about": "About",
-      "aboutText": "cg-file-backup 1.1.0(2026)\n© 2025 m0090-dev.",
+      "aboutText": "cg-file-backup 1.1.1(2026)\n© 2025 m0090-dev.",
       "selectFileFirst": "Please select a work file first.",
       "restoreConfirm": "Restore selected versions? This will create a new file.",
       "restoreError": "Restore Failed",
@@ -58,7 +59,12 @@
       "diffTitle": "Diff (Smart)",
       "diffDesc": "Save only changes",
       "compactMode": "Compact Mode",
-      "compactTitle": "Compact Mode"
+      "compactTitle": "Compact Mode",
+      "compatible": "Compatible",
+      "genMismatch": "Different Generation (Base mismatch)",
+      "fullArchive": "📦 Full Archive (Independent)",
+      "generationLabel": "Generation",
+      "noChecksum": "Unknown Integrity (Missing checksum file)"
     },
     "ja": {
       "settings": "設定",
@@ -88,7 +94,7 @@
       "japanese": "日本語",
       "restartRequired": "言語設定は再起動後に反映されます。",
       "about": "ソフト情報",
-      "aboutText": "cg-file-backup 1.1.0(2026)\n© 2025 m0090-dev.",
+      "aboutText": "cg-file-backup 1.1.1(2026)\n© 2025 m0090-dev.",
       "selectFileFirst": "先に作業ファイルを選択してください。",
       "restoreConfirm": "選択したバージョンを復元しますか？新しいファイルが生成されます。",
       "restoreError": "復元失敗",
@@ -113,7 +119,12 @@
       "diffTitle": "差分 (スマート)",
       "diffDesc": "差分のみを保存",
       "compactMode": "コンパクトモード",
-      "compactTitle": "コンパクトモード"
+      "compactTitle": "コンパクトモード",
+      "compatible": "互換性あり",
+      "genMismatch": "世代が異なります (Base不一致)",
+      "fullArchive": "📦 フルアーカイブ (独立復元可能)",
+      "generationLabel": "世代",
+      "noChecksum": "整合性不明 (設定ファイル紛失)"
     }
   }
 }

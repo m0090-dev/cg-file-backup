@@ -90,6 +90,7 @@ func (a *App) SetAlwaysOnTop(Flag bool) error {
 }
 func (a *App) GetRestorePreviousState() bool { return a.cfg.RestorePreviousState }
 func (a *App) GetBsdiffMaxFileSize() int64 {return a.cfg.BsdiffMaxFileSize}
+func (a *App) GetAutoBaseGenerationThreshold() float64 {return a.cfg.AutoBaseGenerationThreshold}
 
 func (a *App) SetRestorePreviousState(Flag bool) error {
 	a.cfg.RestorePreviousState = Flag

@@ -8,6 +8,7 @@ import (
 	"archive/zip"
 	"compress/gzip"
 	pwzip "github.com/alexmullins/zip"
+	"encoding/json"
 )
 
 
@@ -41,7 +42,7 @@ func (a *App) ReadTextFile(path string) (string, error) {
 	}
 	return string(b), nil
 }
-
+/*
 func (a *App) GetBackupList(workFile, backupDir string) ([]BackupItem, error) {
 	if backupDir == "" {
 		backupDir = DefaultBackupDir(workFile)
@@ -94,7 +95,110 @@ func (a *App) GetBackupList(workFile, backupDir string) ([]BackupItem, error) {
 	}
 	return list, nil
 }
+*/
 
+func (a *App) GetBackupList(workFile, backupDir string) ([]BackupItem, error) {
+	root := backupDir
+	if root == "" {
+		root = DefaultBackupDir(workFile)
+	}
+
+	var list []BackupItem
+	baseNameOnly := strings.TrimSuffix(filepath.Base(workFile), filepath.Ext(workFile))
+	validExts := []string{".diff", ".zip", ".tar.gz", ".tar", ".gz"}
+
+	// --- 1. ルート直下のアーカイブをスキャン ---
+	rootFiles, _ := os.ReadDir(root)
+	for _, f := range rootFiles {
+		if f.IsDir() { continue }
+		name := f.Name()
+		if !strings.Contains(name, baseNameOnly) { continue }
+
+		if a.isValidBackupExt(name, validExts) {
+			info, _ := f.Info()
+			list = append(list, BackupItem{
+				FileName:     name,
+				FilePath:     filepath.Join(root, name),
+				Timestamp:    info.ModTime().Format("2006-01-02 15:04:05"),
+				FileSize:     info.Size(),
+				Generation:   0,    // アーカイブは 0
+				IsCompatible: true, // 独立ファイルなので常に復元可能
+				FoundCheckSumFile: true, // アーカイブにチェックサムファイルは不要なためtrue扱い
+			})
+		}
+	}
+
+	// --- 2. 最新の世代フォルダ(baseN)内をスキャン ---
+	latestGenDir, latestIdx := a.FindLatestBaseDir(root)
+	if latestGenDir != "" {
+		// checksum.json の存在を確認
+		checkPath := filepath.Join(latestGenDir, "checksum.json")
+		foundJson := false
+		if _, err := os.Stat(checkPath); err == nil {
+			foundJson = true
+		}
+
+		var isCompatible bool
+		if foundJson {
+			// JSONがある場合のみ、中身のハッシュチェックを行う（既存ロジック）
+			isWorkMatch := a.IsGenerationCompatible(workFile, latestGenDir)
+			baseFull := filepath.Join(latestGenDir, filepath.Base(workFile)+".base")
+			isBaseMatch := a.isPhysicalBaseMatch(baseFull, latestGenDir)
+			isCompatible = isWorkMatch && isBaseMatch
+		} else {
+			// JSONがない場合は、整合性を保証できないため一律 false
+			isCompatible = false
+		}
+
+		genFiles, _ := os.ReadDir(latestGenDir)
+		for _, f := range genFiles {
+			if f.IsDir() { continue }
+			name := f.Name()
+			if !strings.Contains(name, baseNameOnly) { continue }
+
+			if a.isValidBackupExt(name, validExts) {
+				info, _ := f.Info()
+				list = append(list, BackupItem{
+					FileName:          name,
+					FilePath:          filepath.Join(latestGenDir, name),
+					Timestamp:         info.ModTime().Format("2006-01-02 15:04:05"),
+					FileSize:          info.Size(),
+					Generation:        latestIdx,
+					IsCompatible:      isCompatible,
+					FoundCheckSumFile: foundJson, // ここに存在判定をセット
+				})
+			}
+		}
+	}
+
+	return list, nil
+}
+
+
+// 物理的な .base ファイルが JSON の記録と一致するかチェックするヘルパー
+func (a *App) isPhysicalBaseMatch(basePath, genDirPath string) bool {
+	checkPath := filepath.Join(genDirPath, "checksum.json")
+	data, err := os.ReadFile(checkPath)
+	if err != nil { return false }
+
+	var meta struct {
+		BaseHash string `json:"base_hash"`
+	}
+	json.Unmarshal(data, &meta)
+
+	// .base ファイルのハッシュを計算して比較
+	baseHash, err := a.CalculateSHA256(basePath)
+	if err != nil { return false }
+
+	return baseHash == meta.BaseHash
+}
+
+func (a *App) isValidBackupExt(name string, exts []string) bool {
+	for _, ext := range exts {
+		if strings.HasSuffix(name, ext) { return true }
+	}
+	return false
+}
 
 
 

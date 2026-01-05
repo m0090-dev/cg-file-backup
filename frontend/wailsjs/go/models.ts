@@ -25,6 +25,7 @@ export namespace main {
 	    autoOpen: boolean;
 	    getRestoreState: boolean;
 	    bsdiffMaxFileSize: number;
+	    autoBaseGenerationThreshold: number;
 	    i18n: Record<string, any>;
 	
 	    static createFrom(source: any = {}) {
@@ -38,6 +39,7 @@ export namespace main {
 	        this.autoOpen = source["autoOpen"];
 	        this.getRestoreState = source["getRestoreState"];
 	        this.bsdiffMaxFileSize = source["bsdiffMaxFileSize"];
+	        this.autoBaseGenerationThreshold = source["autoBaseGenerationThreshold"];
 	        this.i18n = source["i18n"];
 	    }
 	}
@@ -46,6 +48,9 @@ export namespace main {
 	    filePath: string;
 	    timestamp: string;
 	    FileSize: number;
+	    generation: number;
+	    isCompatible: boolean;
+	    foundCheckSumFile: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new BackupItem(source);
@@ -57,6 +62,9 @@ export namespace main {
 	        this.filePath = source["filePath"];
 	        this.timestamp = source["timestamp"];
 	        this.FileSize = source["FileSize"];
+	        this.generation = source["generation"];
+	        this.isCompatible = source["isCompatible"];
+	        this.foundCheckSumFile = source["foundCheckSumFile"];
 	    }
 	}
 	export class DiffFileInfo {

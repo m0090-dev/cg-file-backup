@@ -38,6 +38,10 @@ export function BackupOrHdiff(arg1, arg2) {
   return window['go']['main']['App']['BackupOrHdiff'](arg1, arg2);
 }
 
+export function CalculateSHA256(arg1) {
+  return window['go']['main']['App']['CalculateSHA256'](arg1);
+}
+
 export function CopyBackupFile(arg1, arg2) {
   return window['go']['main']['App']['CopyBackupFile'](arg1, arg2);
 }
@@ -50,8 +54,20 @@ export function CreateHdiff(arg1, arg2, arg3) {
   return window['go']['main']['App']['CreateHdiff'](arg1, arg2, arg3);
 }
 
+export function CreateNewGeneration(arg1, arg2, arg3) {
+  return window['go']['main']['App']['CreateNewGeneration'](arg1, arg2, arg3);
+}
+
+export function FindLatestBaseDir(arg1) {
+  return window['go']['main']['App']['FindLatestBaseDir'](arg1);
+}
+
 export function GetAlwaysOnTop() {
   return window['go']['main']['App']['GetAlwaysOnTop']();
+}
+
+export function GetAutoBaseGenerationThreshold() {
+  return window['go']['main']['App']['GetAutoBaseGenerationThreshold']();
 }
 
 export function GetBackupList(arg1, arg2) {
@@ -90,12 +106,20 @@ export function GetRestorePreviousState() {
   return window['go']['main']['App']['GetRestorePreviousState']();
 }
 
+export function IsGenerationCompatible(arg1, arg2) {
+  return window['go']['main']['App']['IsGenerationCompatible'](arg1, arg2);
+}
+
 export function OpenDirectory(arg1) {
   return window['go']['main']['App']['OpenDirectory'](arg1);
 }
 
 export function ReadTextFile(arg1) {
   return window['go']['main']['App']['ReadTextFile'](arg1);
+}
+
+export function ResolveGenerationDir(arg1, arg2) {
+  return window['go']['main']['App']['ResolveGenerationDir'](arg1, arg2);
 }
 
 export function RestoreArchive(arg1, arg2) {
@@ -132,6 +156,10 @@ export function SetRestorePreviousState(arg1) {
 
 export function ToggleCompactMode(arg1) {
   return window['go']['main']['App']['ToggleCompactMode'](arg1);
+}
+
+export function WriteChecksum(arg1, arg2, arg3) {
+  return window['go']['main']['App']['WriteChecksum'](arg1, arg2, arg3);
 }
 
 export function WriteTextFile(arg1, arg2) {

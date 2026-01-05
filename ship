@@ -1,5 +1,5 @@
 #!/usr/bin/env sh 
 wails build
 wails build -nsis -platform windows
-python3 dist.py $@ --zip --clean
+python3 dist.py  --zip --clean
 

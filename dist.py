@@ -2,34 +2,38 @@ import os
 import sys
 import shutil
 import argparse
-import subprocess
+import subprocess
 import json
 import re
 
-def update_app_config_version():
+def get_version_from_wails():
+    """wails.json から productVersion を取得する共通関数"""
     wails_path = 'wails.json'
-    config_path = 'frontend/src/assets/AppConfig.json'
-
-    # 1. wails.json からバージョンを取得
     try:
         with open(wails_path, 'r', encoding='utf-8') as f:
             wails_data = json.load(f)
-            new_version = wails_data.get("info", {}).get("productVersion")
-            
-        if not new_version:
-            print("Error: wails.json 内に productVersion が見つかりませんでした。")
-            return
-    except FileNotFoundError:
-        print(f"Error: {wails_path} が見つかりません。")
+            version = wails_data.get("info", {}).get("productVersion")
+            return version
+    except Exception as e:
+        print(f"Error reading {wails_path}: {e}")
+        return None
+
+def update_app_config_version(new_version):
+    """AppConfig.json の i18n 内バージョン記述を更新する"""
+    if not new_version:
+        print("Error: バージョンが指定されていないため AppConfig.json の更新をスキップします。")
         return
 
-    # 2. AppConfig.json を読み込み
+    config_path = 'frontend/src/assets/AppConfig.json'
     try:
+        if not os.path.exists(config_path):
+            print(f"Warning: {config_path} が見つからないためスキップします。")
+            return
+
         with open(config_path, 'r', encoding='utf-8') as f:
             config_data = json.load(f)
 
-        # 3. i18n 内の各言語の aboutText を更新
-        # \1 ではなく \g<1> を使うことで、直後に数字が来ても正しく分離されます
+        # 置換パターン: "App Name 0.0.1(1)" のような形式を想定
         target_pattern = r"([a-zA-Z0-9_-]+\s)([0-9.]+)(\([0-9]+\))"
         replacement = rf"\g<1>{new_version}\g<3>"
 
@@ -37,41 +41,48 @@ def update_app_config_version():
             for lang in config_data["i18n"]:
                 about_text = config_data["i18n"][lang].get("aboutText", "")
                 if about_text:
-                    # 置換実行
                     updated_text = re.sub(target_pattern, replacement, about_text)
                     config_data["i18n"][lang]["aboutText"] = updated_text
 
-        # 4. AppConfig.json に書き戻し
         with open(config_path, 'w', encoding='utf-8') as f:
             json.dump(config_data, f, indent=2, ensure_ascii=False)
         
-        print(f"Success: AppConfig.json をバージョン {new_version} に更新しました。")
+        print(f"Success: AppConfig.json をバージョン {new_version} に同期しました。")
 
     except Exception as e:
-        print(f"Error: 予期せぬエラーが発生しました: {e}")
-
+        print(f"Error updating AppConfig.json: {e}")
 
 def create_release_package():
     # 1. 引数の設定
     parser = argparse.ArgumentParser(description="cg-file-backup packaging script")
-    parser.add_argument("version", help="Version string (e.g. 0.0.1)")
+    # version を positional 引数からオプション（任意）に変更
+    parser.add_argument("--ver", help="Override version string (default: read from wails.json)")
     parser.add_argument("--zip", action="store_true", help="Create a zip archive of the package")
     parser.add_argument("--clean", action="store_true", help="Remove folders after processing")
     
     args = parser.parse_args()
 
-    version = args.version
+    # 2. バージョンの決定 (引数優先 > wails.json)
+    version = args.ver if args.ver else get_version_from_wails()
+    
+    if not version:
+        print("Error: バージョンを特定できませんでした。wails.json を確認するか --ver を指定してください。")
+        sys.exit(1)
+
+    # AppConfig.json 側の書き換えを実行
+    update_app_config_version(version)
+
     project_name = "cg-file-backup"
     dist_dir = f"{project_name}-{version}"
 
-    # 2. 出力用フォルダ（共通配布用：ZIP用）の準備
+    # 3. 出力用フォルダの準備
     if os.path.exists(dist_dir):
         shutil.rmtree(dist_dir)
     os.makedirs(dist_dir)
 
     print(f"--- Packaging {project_name} version {version} ---")
 
-    # 3. build/bin 内のファイルをコピー
+    # 4. build/bin 内のファイルをコピー
     target_build_dir = "build/bin"
     if not os.path.exists(target_build_dir):
         target_build_dir = "build"
@@ -87,14 +98,14 @@ def create_release_package():
     else:
         print("Warning: Build directory not found.")
 
-    # 4. 外部依存ディレクトリのコピー
+    # 5. 外部依存ディレクトリのコピー
     required_bins = ["hdiff-bin", "bzip2-bin"]
     for bin_dir in required_bins:
         if os.path.exists(bin_dir):
             print(f"Copying external dependency: {bin_dir}")
             shutil.copytree(bin_dir, os.path.join(dist_dir, bin_dir))
 
-    # 5. LICENSE/CREDITSのコピー
+    # 6. LICENSE/CREDITSのコピー
     found_license = None
     for pattern in ["LICENSE", "LICENSE.txt", "LICENSE.md"]:
         if os.path.exists(pattern):
@@ -107,7 +118,7 @@ def create_release_package():
             shutil.copy2(pattern, dist_dir)
             break
 
-    # 6. Linux環境での .deb パッケージ作成
+    # 7. Linux環境での .deb パッケージ作成
     deb_file_path = f"{dist_dir}.deb"
     if sys.platform.startswith('linux'):
         print(f"--- Creating .deb package for Linux ---")
@@ -121,21 +132,18 @@ def create_release_package():
             os.makedirs(doc_path, exist_ok=True)
             os.makedirs(os.path.join(deb_root, "DEBIAN"), exist_ok=True)
 
-            # Linux版 .deb には .exe や .dll を含めない
             for item in artifacts:
                 if not (item.endswith('.exe') or item.endswith('.dll')):
                     target = shutil.copy2(os.path.join(dist_dir, item), bin_path)
                     os.chmod(target, 0o755)
                     print(f"Included in deb: {item}")
             
-            # 外部バイナリフォルダもLinux版のみを厳選してコピー
             for rb in required_bins:
                 src_rb = os.path.join(dist_dir, rb)
                 if os.path.exists(src_rb):
                     dest_rb = os.path.join(bin_path, rb)
                     os.makedirs(dest_rb, exist_ok=True)
                     for f in os.listdir(src_rb):
-                        # exeなどは除外（Linux用バイナリのみコピー）
                         if not (f.endswith('.exe') or f.endswith('.dll')):
                             src_f = os.path.join(src_rb, f)
                             dest_f = shutil.copy2(src_f, dest_rb)
@@ -144,17 +152,15 @@ def create_release_package():
             if found_license:
                 shutil.copy2(found_license, os.path.join(doc_path, "copyright"))
 
-            # controlファイルの作成 (DependsにWebView2相当のライブラリを追加)
-            # Wailsの標準的な依存関係：libwebkit2gtk-4.0-37, libgtk-3-0
             control_content = f"""Package: {project_name}
 Version: {version}
 Section: utils
 Priority: optional
 Architecture: amd64
 Maintainer: Developer <dev@example.com>
-Depends: libwebkit2gtk-4.0-37, libgtk-3-0, libgluegen2-rt-java
+Depends: libwebkit2gtk-4.0-37, libgtk-3-0
 Description: {project_name} backup tool
- A file backup utility using Wails (WebView2).
+ A file backup utility using Wails.
  Includes hdiff and bzip2 dependencies.
 """
             with open(os.path.join(deb_root, "DEBIAN/control"), "w") as f:
@@ -169,13 +175,13 @@ Description: {project_name} backup tool
         except Exception as e:
             print(f"Skipping .deb creation: {e}")
 
-    # 7. ZIP圧縮処理
+    # 8. ZIP圧縮処理
     if args.zip:
         print(f"--- Archiving to {dist_dir}.zip ---")
         shutil.make_archive(dist_dir, 'zip', root_dir=".", base_dir=dist_dir)
         print(f"Archive created: {dist_dir}.zip")
 
-    # 8. クリーンアップ
+    # 9. クリーンアップ
     if args.clean:
         print(f"Cleaning up source directory: {dist_dir}")
         if os.path.exists(dist_dir):
@@ -186,5 +192,4 @@ Description: {project_name} backup tool
     print("--- Done! ---")
 
 if __name__ == "__main__":
-    update_app_config_version()
     create_release_package()

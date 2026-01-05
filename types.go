@@ -13,4 +13,21 @@ type BackupItem struct {
 	FilePath  string `json:"filePath"`
 	Timestamp string `json:"timestamp"`
 	FileSize  int64  `json:"FileSize"`
+	Generation   int    `json:"generation"`   // 世代番号
+	IsCompatible bool   `json:"isCompatible"` // 現在のファイルに適用可能か
+	FoundCheckSumFile bool `json:"foundCheckSumFile"`
 }
+
+
+// GenerationManager 世代管理を司る構造体
+type GenerationManager struct {
+	BackupRoot string  // cg_backup_元ファイル名/ のパス
+	Threshold  float64 // ベース更新の閾値 (例: 0.8 = 80%)
+}
+
+// BackupGenInfo 現在の世代情報
+type BackupGenInfo struct {
+	DirPath string
+	BaseIdx int
+}
+

@@ -21,13 +21,21 @@ export function BackupOrDiff(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function BackupOrHdiff(arg1:string,arg2:string):Promise<void>;
 
+export function CalculateSHA256(arg1:string):Promise<string>;
+
 export function CopyBackupFile(arg1:string,arg2:string):Promise<void>;
 
 export function CreateBsdiff(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function CreateHdiff(arg1:string,arg2:string,arg3:string):Promise<void>;
 
+export function CreateNewGeneration(arg1:string,arg2:number,arg3:string):Promise<string>;
+
+export function FindLatestBaseDir(arg1:string):Promise<string|number>;
+
 export function GetAlwaysOnTop():Promise<boolean>;
+
+export function GetAutoBaseGenerationThreshold():Promise<number>;
 
 export function GetBackupList(arg1:string,arg2:string):Promise<Array<main.BackupItem>>;
 
@@ -47,9 +55,13 @@ export function GetLanguageText(arg1:string):Promise<string>;
 
 export function GetRestorePreviousState():Promise<boolean>;
 
+export function IsGenerationCompatible(arg1:string,arg2:string):Promise<boolean>;
+
 export function OpenDirectory(arg1:string):Promise<void>;
 
 export function ReadTextFile(arg1:string):Promise<string>;
+
+export function ResolveGenerationDir(arg1:string,arg2:string):Promise<string>;
 
 export function RestoreArchive(arg1:string,arg2:string):Promise<void>;
 
@@ -68,5 +80,7 @@ export function SetLanguage(arg1:string):Promise<void>;
 export function SetRestorePreviousState(arg1:boolean):Promise<void>;
 
 export function ToggleCompactMode(arg1:boolean):Promise<void>;
+
+export function WriteChecksum(arg1:string,arg2:string,arg3:number):Promise<void>;
 
 export function WriteTextFile(arg1:string,arg2:string):Promise<void>;

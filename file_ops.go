@@ -330,24 +330,4 @@ func (a *App) DirExists(path string) bool {
 	}
 	return info.IsDir()
 }
-// IsBaseAvailable は、指定されたディレクトリに有効な .base があるか確認します
-func (a *App) IsBaseAvailable(dir string, workFile string) bool {
-	// そもそもフォルダがないならNG
-	info, err := os.Stat(dir)
-	if err != nil || !info.IsDir() {
-		return false
-	}
-
-	// ワークファイル名からベースファイル名を特定 (例: test.psd -> test.base)
-	baseName := filepath.Base(workFile)
-	// 拡張子を除去して .base を付与
-	ext := filepath.Ext(baseName)
-	baseFile := baseName[0:len(baseName)-len(ext)] + ".base"
-	
-	basePath := filepath.Join(dir, baseFile)
-
-	// その .base ファイルが物理的に存在するか？
-	_, err = os.Stat(basePath)
-	return err == nil
-}
 

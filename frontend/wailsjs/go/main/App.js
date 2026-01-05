@@ -106,10 +106,6 @@ export function GetRestorePreviousState() {
   return window['go']['main']['App']['GetRestorePreviousState']();
 }
 
-export function IsBaseAvailable(arg1, arg2) {
-  return window['go']['main']['App']['IsBaseAvailable'](arg1, arg2);
-}
-
 export function OpenDirectory(arg1) {
   return window['go']['main']['App']['OpenDirectory'](arg1);
 }

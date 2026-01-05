@@ -5,7 +5,7 @@ import {
   RestoreBackup,
   GetFileSize,
   GetBsdiffMaxFileSize,
-  IsBaseAvailable
+  DirExists
 } from '../wailsjs/go/main/App';
 
 import {
@@ -119,19 +119,18 @@ export async function OnExecute() {
     else if (mode === 'diff') {
       const algo = document.getElementById('diff-algo').value;
 
-      // --- 【最終改善】フォルダ＋Baseファイルの生存確認 ---
+      // --- 【修正】フォルダの存在のみを確認 ---
       if (tab.selectedTargetDir) {
-        // Go側の新関数: フォルダが存在し、かつ中に対応する .base があるかチェック
-        const baseReady = await IsBaseAvailable(tab.selectedTargetDir, tab.workFile);
+        // Go側の DirExists を呼び出す。フォルダがあればOK。中身（.base）は問わない。
+        const exists = await DirExists(tab.selectedTargetDir);
         
-        if (!baseReady) {
-          console.log("Specified base or directory not found. Reverting to auto-discovery.");
-          // 物理的にベースがないなら、この世代への書き込みは不可能なのでリセット
-          tab.selectedTargetDir = ""; 
+        if (!exists) {
+          console.log("Selected directory no longer exists. Reverting to auto-discovery.");
+          tab.selectedTargetDir = ""; // 物理的に消えている場合のみリセット
         }
       }
 
-      // 存在するなら指定パス、なければ親ディレクトリ（Go側で最新を自動検索/作成）
+      // 存在するなら選んだパス、なければバックアップディレクトリ（Go側で自動計算）
       const targetPath = tab.selectedTargetDir || tab.backupDir;
       
       await BackupOrDiff(tab.workFile, targetPath, algo);
@@ -146,6 +145,8 @@ export async function OnExecute() {
     alert(err); 
   }
 }
+
+
 // --- 復元・適用ロジック ---
 export async function applySelectedBackups() {
   const tab = getActiveTab();

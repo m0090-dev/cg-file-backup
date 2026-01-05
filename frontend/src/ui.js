@@ -114,8 +114,6 @@ export function UpdateDisplay() {
   if (cSel && mode) cSel.value = mode;
 }
 
-
-
 export async function UpdateHistory() {
   const tab = getActiveTab();
   const list = document.getElementById('diff-history-list');
@@ -129,23 +127,27 @@ export async function UpdateHistory() {
     const data = await GetBackupList(tab.workFile, tab.backupDir);
     if (!data || data.length === 0) { 
       list.innerHTML = `<div class="info-msg">${i18n.noHistory}</div>`; 
+      // 履歴が空になったら選択もリセット
+      tab.selectedTargetDir = "";
       return; 
     }
     
     data.sort((a, b) => b.fileName.localeCompare(a.fileName));
 
-    // 1. 本来の最新世代番号を取得
+    // --- 修正ポイント：勝手に tab の中身を書き換えない ---
+    // 1. 本来の最新世代を取得
     const latestGenNumber = Math.max(...data.map(item => item.generation || 0));
     
-    // 2. 現在「書き込み先」としてマークされているパスを特定
-    // selectedTargetDir が未設定なら、latestGenNumber を持つアイテムのディレクトリをデフォルトにする
-    let activeDirPath = tab?.selectedTargetDir || null;
+    // 2. 表示用のパスを決定する（tab.selectedTargetDir が優先）
+    let activeDirPath = tab.selectedTargetDir;
+
+    // もし tab.selectedTargetDir が完全に「空」の時だけ、最新を仮表示として採用する
+    // ※ ここで tab.selectedTargetDir = ... と代入しないのがミソです
     if (!activeDirPath) {
-        const latestItem = data.find(item => item.generation === latestGenNumber);
-        if (latestItem) {
-            // ファイルパスからディレクトリ部分を抽出 (Go側のfilepath.Dir相当)
-            activeDirPath = latestItem.filePath.substring(0, latestItem.filePath.lastIndexOf('/')) 
-                         || latestItem.filePath.substring(0, latestItem.filePath.lastIndexOf('\\'));
+        const first = data[0];
+	{
+            activeDirPath = first.filePath.substring(0, first.filePath.lastIndexOf('/')) 
+                         || first.filePath.substring(0, first.filePath.lastIndexOf('\\'));
         }
     }
 
@@ -154,7 +156,6 @@ export async function UpdateHistory() {
       const isDiffFile = item.fileName.toLowerCase().endsWith('.diff');
       const isArchive = !isDiffFile && item.generation === 0;
 
-      // このアイテムの親ディレクトリを特定
       const itemDir = item.filePath.substring(0, item.filePath.lastIndexOf('/')) 
                    || item.filePath.substring(0, item.filePath.lastIndexOf('\\'));
 
@@ -162,16 +163,16 @@ export async function UpdateHistory() {
       let genBadge = "";
 
       if (isArchive) {
-        const archiveText = i18n.fullArchive || "📦 Full Archive (独立復元可能)";
+        const archiveText = i18n.fullArchive || " Full Archive";
         statusHtml = `<div style="color:#2f8f5b; font-weight:bold;">${archiveText}</div>`;
         genBadge = `<span style="font-size:10px; color:#fff; background:#2f8f5b; padding:1px 4px; border-radius:3px; margin-left:5px;">Archive</span>`;
       } else {
         const currentGen = item.generation || 1;
-        // 「アクティブなディレクトリ」に属しているかどうかで判定
+        // activeDirPath（選択中パス or 仮の最新パス）と一致するか判定
         const isTarget = (itemDir === activeDirPath);
 
         let statusColor = isTarget ? "#2f8f5b" : "#3B5998"; 
-        let statusIcon = isTarget ? "✅" : "📄";
+        let statusIcon = isTarget ? "✅" : "";
         let statusText = isTarget ? (i18n.compatible || "書き込み先 (Active)") : (i18n.genMismatch || "別世代 (クリックで切替)");
 
         const genLabel = i18n.generationLabel || "Gen";
@@ -181,16 +182,10 @@ export async function UpdateHistory() {
         statusHtml = `<div style="color:${statusColor}; font-weight:bold;">${statusIcon} ${statusText}</div>
                       <div style="font-size:11px; color:#666;">${genLabel}: ${currentGen} ${isTarget ? '★' : ''}</div>`;
         
-        // バッジにクリックイベント用のクラスを追加
         genBadge = `<span class="gen-selector-badge" data-dir="${itemDir}" style="${badgeStyle}">${genLabel}.${currentGen}${currentLabel}</span>`;
       }
 
-      const popupContent = `
-        ${statusHtml}
-        <hr style="border:0; border-top:1px solid #eee; margin:5px 0;">
-        <strong>Path:</strong> ${item.filePath}
-        ${note ? `<br><hr style="border:0; border-top:1px dashed #ccc; margin:5px 0;"><strong>Memo:</strong> ${note}` : ""}
-      `;
+      const popupContent = `${statusHtml}<hr style="border:0; border-top:1px solid #eee; margin:5px 0;"><strong>Path:</strong> ${item.filePath}${note ? `<br><hr style="border:0; border-top:1px dashed #ccc; margin:5px 0;"><strong>Memo:</strong> ${note}` : ""}`;
       
       return `<div class="diff-item" style="${itemDir === activeDirPath ? 'border-left: 4px solid #2f8f5b; background: #f0fff4;' : ''}">
           <div style="display:flex; align-items:center; width:100%;">
@@ -201,10 +196,10 @@ export async function UpdateHistory() {
                   ${item.fileName} ${genBadge} <span style="font-size:10px; color:#3B5998;">(${formatSize(item.FileSize)})</span>
                 </span>
                 <span style="font-size:10px; color:#888;">${item.timestamp}</span>
-                ${note ? `<div style="font-size:10px; color:#2f8f5b; font-style:italic; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">📝 ${note}</div>` : ''}
+                ${note ? `<div style="font-size:10px; color:#2f8f5b; font-style:italic; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"> ${note}</div>` : ''}
               </div>
             </label>
-            <button class="note-btn" data-path="${item.filePath}" style="background:none; border:none; cursor:pointer; font-size:14px; padding:4px;">📝</button>
+            <button class="note-btn" data-path="${item.filePath}" style="background:none; border:none; cursor:pointer; font-size:14px; padding:4px;"></button>
           </div>
         </div>`;
     }));
@@ -212,13 +207,13 @@ export async function UpdateHistory() {
     list.innerHTML = itemsHtml.join('');
 
     // --- イベントリスナーの追加 ---
-    // 世代バッジをクリックしてターゲットを切り替える
     list.querySelectorAll('.gen-selector-badge').forEach(el => {
         el.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-	    tab.selectedTargetDir = el.getAttribute('data-dir');
-            UpdateHistory(); // 再描画して ✅ を更新
+            // ユーザーの意思を tab.selectedTargetDir に叩き込む
+            tab.selectedTargetDir = el.getAttribute('data-dir');
+            UpdateHistory(); 
         });
     });
 
@@ -229,8 +224,6 @@ export async function UpdateHistory() {
     list.innerHTML = `<div class="info-msg" style="color:red;">Error: ${err.message || 'loading history'}</div>`; 
   }
 }
-
-
 
 function setupHistoryPopups() {
   const tooltip = document.getElementById('custom-tooltip') || createTooltipElement();

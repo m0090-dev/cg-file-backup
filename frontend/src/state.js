@@ -7,7 +7,7 @@ import {
 
 // --- 状態管理 ---
 export let i18n = null;
-export let tabs = [{ id: Date.now(), workFile: '', workFileSize: 0, backupDir: '', active: true }];
+export let tabs = [{ id: Date.now(), workFile: '', workFileSize: 0, backupDir: '', active: true,selectedTargetDir: "" }];
 export let recentFiles = JSON.parse(localStorage.getItem('recentFiles') || '[]');
 
 export const MAX_RECENT_COUNT = 5;

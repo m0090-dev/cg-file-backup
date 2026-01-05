@@ -114,8 +114,7 @@ export function UpdateDisplay() {
   if (cSel && mode) cSel.value = mode;
 }
 
-// モジュールレベル、または適切なスコープで保持
-export let selectedTargetDir = null; 
+
 
 export async function UpdateHistory() {
   const tab = getActiveTab();
@@ -140,7 +139,7 @@ export async function UpdateHistory() {
     
     // 2. 現在「書き込み先」としてマークされているパスを特定
     // selectedTargetDir が未設定なら、latestGenNumber を持つアイテムのディレクトリをデフォルトにする
-    let activeDirPath = selectedTargetDir;
+    let activeDirPath = tab?.selectedTargetDir || null;
     if (!activeDirPath) {
         const latestItem = data.find(item => item.generation === latestGenNumber);
         if (latestItem) {
@@ -218,7 +217,7 @@ export async function UpdateHistory() {
         el.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            selectedTargetDir = el.getAttribute('data-dir');
+	    tab.selectedTargetDir = el.getAttribute('data-dir');
             UpdateHistory(); // 再描画して ✅ を更新
         });
     });

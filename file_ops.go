@@ -9,7 +9,7 @@ import (
 	"archive/zip"
 	"compress/gzip"
 	pwzip "github.com/alexmullins/zip"
-	"encoding/json"
+	//"encoding/json"
 )
 
 
@@ -33,7 +33,7 @@ func (a *App) WriteTextFile(path string, content string) error {
 }
 
 // ReadTextFile は指定されたパスのファイルを文字列として読み込みます（汎用）
-func (a *App) ReadTextFile(path string) (string, error) {
+func (a *App)ReadTextFile(path string) (string, error) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return "", nil // ファイルがない場合はエラーにせず空文字を返す
 	}
@@ -122,8 +122,6 @@ func (a *App) GetBackupList(workFile, backupDir string) ([]BackupItem, error) {
 				Timestamp:    info.ModTime().Format("2006-01-02 15:04:05"),
 				FileSize:     info.Size(),
 				Generation:   0,
-				IsCompatible: true,
-				FoundCheckSumFile: true,
 			})
 		}
 	}
@@ -140,25 +138,6 @@ func (a *App) GetBackupList(workFile, backupDir string) ([]BackupItem, error) {
 		fmt.Sscanf(d.Name(), "base%d", &genIdx)
 		
 		genDir := filepath.Join(root, d.Name())
-		
-		// そのフォルダ専用の整合性チェック
-		checkPath := filepath.Join(genDir, "checksum.json")
-		foundJson := false
-		if _, err := os.Stat(checkPath); err == nil {
-			foundJson = true
-		}
-
-		var isCompatible bool
-		if foundJson {
-			// そのフォルダ(baseN)の基準と今の作業ファイルが合うか判定
-			isWorkMatch := a.IsGenerationCompatible(workFile, genDir)
-			baseFull := filepath.Join(genDir, filepath.Base(workFile)+".base")
-			isBaseMatch := a.isPhysicalBaseMatch(baseFull, genDir)
-			isCompatible = isWorkMatch && isBaseMatch
-		} else {
-			isCompatible = false
-		}
-
 		// フォルダ内のファイルをリストに追加
 		genFiles, _ := os.ReadDir(genDir)
 		for _, f := range genFiles {
@@ -175,8 +154,6 @@ func (a *App) GetBackupList(workFile, backupDir string) ([]BackupItem, error) {
 					Timestamp:         info.ModTime().Format("2006-01-02 15:04:05"),
 					FileSize:          info.Size(),
 					Generation:        genIdx,
-					IsCompatible:      isCompatible,
-					FoundCheckSumFile: foundJson,
 				})
 			}
 		}
@@ -185,23 +162,6 @@ func (a *App) GetBackupList(workFile, backupDir string) ([]BackupItem, error) {
 	return list, nil
 }
 
-// 物理的な .base ファイルが JSON の記録と一致するかチェックするヘルパー
-func (a *App) isPhysicalBaseMatch(basePath, genDirPath string) bool {
-	checkPath := filepath.Join(genDirPath, "checksum.json")
-	data, err := os.ReadFile(checkPath)
-	if err != nil { return false }
-
-	var meta struct {
-		BaseHash string `json:"base_hash"`
-	}
-	json.Unmarshal(data, &meta)
-
-	// .base ファイルのハッシュを計算して比較
-	baseHash, err := a.CalculateSHA256(basePath)
-	if err != nil { return false }
-
-	return baseHash == meta.BaseHash
-}
 
 func (a *App) isValidBackupExt(name string, exts []string) bool {
 	for _, ext := range exts {

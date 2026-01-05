@@ -130,12 +130,13 @@ export async function UpdateHistory() {
     }
     
     data.sort((a, b) => b.fileName.localeCompare(a.fileName));
+
+    // 1. 最新の世代番号を取得（これが今の作業ベースとなる世代）
+    const latestGeneration = Math.max(...data.map(item => item.generation || 0));
     
     const itemsHtml = await Promise.all(data.map(async (item) => {
       const note = await ReadTextFile(item.filePath + ".note").catch(() => "");
       
-      // --- 修正ポイント: アーカイブ判定の厳格化 ---
-      // 拡張子が .diff ではなく、かつ generation が 0 の場合のみアーカイブとする
       const isDiffFile = item.fileName.toLowerCase().endsWith('.diff');
       const isArchive = !isDiffFile && item.generation === 0;
 
@@ -143,39 +144,42 @@ export async function UpdateHistory() {
       let genBadge = "";
 
       if (isArchive) {
-        // フルバックアップ（アーカイブ）の表示
         const archiveText = i18n.fullArchive || "📦 Full Archive (独立復元可能)";
         statusHtml = `<div style="color:#2f8f5b; font-weight:bold;">${archiveText}</div>`;
         genBadge = `<span style="font-size:10px; color:#fff; background:#2f8f5b; padding:1px 4px; border-radius:3px; margin-left:5px;">Archive</span>`;
       } else {
-        // 差分ファイルの表示
-        let statusColor = "#e74c3c";
+        const currentGen = item.generation || 1;
+        const isLatest = (currentGen === latestGeneration && latestGeneration > 0);
+
+        // --- 修正の核心: 判定ロジックの変更 ---
+        // 「今現在のファイルとハッシュが合うか」ではなく、
+        // 「最新世代（Current）のフォルダに属しているか」を ✅ の基準にする
+        let statusColor = "#e74c3c"; // デフォルトは警告色
         let statusIcon = "⚠️";
         let statusText = "";
 
-        if (item.foundCheckSumFile === false) {
-          statusColor = "#f39c12"; 
-          statusIcon = "❓";
-          statusText = i18n.noChecksum || "整合性不明 (設定ファイル紛失)";
-        } 
-        else if (!item.isCompatible) {
-          statusColor = "#e74c3c"; 
-          statusIcon = "⚠️";
-          statusText = i18n.genMismatch || "世代が異なります (Base不一致)";
-        } 
-        else {
+        if (isLatest) {
+          // 同じ世代（最新ベース）に属していれば、描き進めてハッシュがズレていても ✅ とする
+          // これにより v1.1.0 のような「いつでも戻せる安心感」を復活させる
           statusColor = "#2f8f5b"; 
           statusIcon = "✅";
-          statusText = i18n.compatible || "互換性あり";
+          statusText = i18n.compatible || "互換性あり (現在の世代)";
+        } 
+        else {
+          // 別の世代（古いBase）に属している場合は ⚠️ を出し、Baseの切り替えが必要なことを示す
+          statusColor = "#3B5998"; // 警告ではなく「情報」としての青色
+          statusIcon = "📂";
+          statusText = i18n.genMismatch || "別世代のバックアップ (Base切替推奨)";
         }
         
         const genLabel = i18n.generationLabel || "Generation";
-        const currentGen = item.generation || 1; // 0の場合は暫定的に1として表示
-        
+        const currentLabel = isLatest ? ` <span style="font-size:9px; opacity:0.9;">(Current)</span>` : "";
+        const badgeStyle = `font-size:10px; color:#fff; background:${statusColor}; padding:1px 4px; border-radius:3px; margin-left:5px; ${isLatest ? 'border: 1px solid #fff;' : ''}`;
+
         statusHtml = `<div style="color:${statusColor}; font-weight:bold;">${statusIcon} ${statusText}</div>
-                      <div style="font-size:11px; color:#666;">${genLabel}: ${currentGen}</div>`;
+                      <div style="font-size:11px; color:#666;">${genLabel}: ${currentGen} ${isLatest ? '★' : ''}</div>`;
         
-        genBadge = `<span style="font-size:10px; color:#fff; background:${statusColor}; padding:1px 4px; border-radius:3px; margin-left:5px;">Gen.${currentGen}</span>`;
+        genBadge = `<span style="${badgeStyle}">Gen.${currentGen}${currentLabel}</span>`;
       }
 
       const popupContent = `
@@ -210,6 +214,7 @@ export async function UpdateHistory() {
     list.innerHTML = `<div class="info-msg" style="color:red;">Error: ${err.message || 'loading history'}</div>`; 
   }
 }
+
 
 function setupHistoryPopups() {
   const tooltip = document.getElementById('custom-tooltip') || createTooltipElement();

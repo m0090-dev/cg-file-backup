@@ -49,8 +49,6 @@ export namespace main {
 	    timestamp: string;
 	    FileSize: number;
 	    generation: number;
-	    isCompatible: boolean;
-	    foundCheckSumFile: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new BackupItem(source);
@@ -63,8 +61,6 @@ export namespace main {
 	        this.timestamp = source["timestamp"];
 	        this.FileSize = source["FileSize"];
 	        this.generation = source["generation"];
-	        this.isCompatible = source["isCompatible"];
-	        this.foundCheckSumFile = source["foundCheckSumFile"];
 	    }
 	}
 	export class DiffFileInfo {

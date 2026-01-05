@@ -14,8 +14,6 @@ type BackupItem struct {
 	Timestamp string `json:"timestamp"`
 	FileSize  int64  `json:"FileSize"`
 	Generation   int    `json:"generation"`   // 世代番号
-	IsCompatible bool   `json:"isCompatible"` // 現在のファイルに適用可能か
-	FoundCheckSumFile bool `json:"foundCheckSumFile"`
 }
 
 

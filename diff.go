@@ -11,38 +11,6 @@ import (
 
 
 
-/*
-// BackupOrDiff はアルゴリズム名をファイル名に含めて保存します
-func (a *App) BackupOrDiff(workFile, customDir, algo string) error {
-	targetDir := customDir
-	if targetDir == "" {
-		targetDir = DefaultBackupDir(workFile)
-	}
-	if err := os.MkdirAll(targetDir, 0755); err != nil {
-		return err
-	}
-
-	baseName := filepath.Base(workFile)
-	baseFull := filepath.Join(targetDir, baseName+".base")
-
-	if _, err := os.Stat(baseFull); os.IsNotExist(err) {
-		if err := CopyFile(workFile, baseFull); err != nil {
-			return err
-		}
-	}
-
-	ts := time.Now().Format("20060102_150405")
-	
-	// ★重要: ファイル名にアルゴリズムを明示する (例: test.clip.20230101.bsdiff.diff)
-	diffPath := filepath.Join(targetDir, fmt.Sprintf("%s.%s.%s.diff", baseName, ts, algo))
-
-	if algo == "bsdiff" {
-		return a.CreateBsdiff(baseFull, workFile, diffPath)
-	}
-	// デフォルトは Hdiff
-	return a.CreateHdiff(baseFull, workFile, diffPath)
-}
-*/  
 
 func (a *App) BackupOrDiff(workFile, customDir, algo string) error {
 	root := customDir
@@ -58,38 +26,19 @@ func (a *App) BackupOrDiff(workFile, customDir, algo string) error {
 
 	baseName := filepath.Base(workFile)
 	baseFull := filepath.Join(targetDir, baseName+".base")
-	checkPath := filepath.Join(targetDir, "checksum.json")
-
-	// --- 【強化ポイント】 整合性チェックと自動修復 ---
-	
 	// A. .baseファイル自体の存在チェック
 	baseExists := true
 	if _, err := os.Stat(baseFull); os.IsNotExist(err) {
 		baseExists = false
 	}
 
-	// B. checksum.jsonの存在チェック
-	jsonExists := true
-	if _, err := os.Stat(checkPath); os.IsNotExist(err) {
-		jsonExists = false
-	}
-
-	// C. 中身が合っているか（JSONがある場合のみチェック）
-	isCompatible := true
-	if jsonExists {
-		isCompatible = a.IsGenerationCompatible(workFile, targetDir)
-	}
 
 	// 【自己修復トリガー】
-	// .baseがない、JSONがない、または中身が不整合(⚠️)な場合
-	if !baseExists || !jsonExists || !isCompatible {
+	// .baseがない
+	if !baseExists{
 		// 現在の作業ファイルを .base として強制コピー（リベース）
 		if err := CopyFile(workFile, baseFull); err != nil {
 			return fmt.Errorf("failed to sync base file: %w", err)
-		}
-		// 新しいハッシュで checksum.json を（再）作成
-		if err := a.WriteChecksum(targetDir, workFile, currentIdx); err != nil {
-			return fmt.Errorf("failed to refresh checksum: %w", err)
 		}
 	}
 	// --- 修復完了 ---
@@ -135,10 +84,7 @@ func (a *App) BackupOrDiff(workFile, customDir, algo string) error {
 			return err
 		}
 
-		// 新世代のチェックサムを書き込む
-		if err := a.WriteChecksum(newGenDir, workFile, newIdx); err != nil {
-			return fmt.Errorf("failed to write new checksum: %w", err)
-		}
+	
 
 		newBaseFull := filepath.Join(newGenDir, baseName+".base")
 		finalPath := filepath.Join(newGenDir, fmt.Sprintf("%s.%s.%s.diff", baseName, ts, algo))

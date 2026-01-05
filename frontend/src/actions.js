@@ -77,6 +77,7 @@ export function updateExecute() {
     btn.title = isTooLargeForBsdiff ? `File too large for bsdiff (Max: ${Math.floor(bsdiffLimit/1000000)}MB)` : "";
   });
 }
+
 export async function OnExecute() {
   const tab = getActiveTab();
   if (!tab?.workFile) { alert(i18n.selectFileFirst); return; }
@@ -108,7 +109,26 @@ export async function OnExecute() {
       successText = i18n.archiveBackupSuccess.replace('{format}', fmt.toUpperCase());
     } else if (mode === 'diff') {
       const algo = document.getElementById('diff-algo').value;
+
+      // --- 【修正】生存確認ロジック ---
+      // 手動選択(tab.selectedTargetDir)がある場合、そのフォルダがまだ生きているか確認
+      if (tab.selectedTargetDir) {
+        try {
+          // GetBackupListを使って、指定フォルダ内にベースや差分が存在するかチェック
+          const check = await GetBackupList(tab.workFile, tab.selectedTargetDir);
+          // フォルダが消されている、あるいは中身が空（ベースもない）なら、自動計算へ
+          if (!check || check.length === 0) {
+            tab.selectedTargetDir = ""; 
+          }
+        } catch (e) {
+          // フォルダアクセス自体がエラーになる場合も自動計算へ
+          tab.selectedTargetDir = "";
+        }
+      }
+
       const targetPath = tab.selectedTargetDir || tab.backupDir;
+      // -----------------------------
+
       await BackupOrDiff(tab.workFile, targetPath, algo);
       successText = `${i18n.diffBackupSuccess} (${algo.toUpperCase()})`;
     }
@@ -121,7 +141,6 @@ export async function OnExecute() {
     alert(err); 
   }
 }
-
 
 
 // --- 復元・適用ロジック ---

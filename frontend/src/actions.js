@@ -20,7 +20,8 @@ import {
   UpdateDisplay,
   UpdateHistory,
   toggleProgress,
-  showFloatingMessage
+  showFloatingMessage,
+  selectedTargetDir
 } from './ui';
 
 let bsdiffLimit = 104857600; // デフォルト100MB (100 * 1024 * 1024)
@@ -108,7 +109,8 @@ export async function OnExecute() {
       successText = i18n.archiveBackupSuccess.replace('{format}', fmt.toUpperCase());
     } else if (mode === 'diff') {
       const algo = document.getElementById('diff-algo').value;
-      await BackupOrDiff(tab.workFile, tab.backupDir, algo);
+      const targetPath = selectedTargetDir || tab.backupDir;
+      await BackupOrDiff(tab.workFile, targetPath, algo);
       successText = `${i18n.diffBackupSuccess} (${algo.toUpperCase()})`;
     }
     

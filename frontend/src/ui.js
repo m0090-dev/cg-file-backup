@@ -113,6 +113,10 @@ export function UpdateDisplay() {
   const cSel = document.getElementById('compact-mode-select');
   if (cSel && mode) cSel.value = mode;
 }
+
+// モジュールレベル、または適切なスコープで保持
+export let selectedTargetDir = null; 
+
 export async function UpdateHistory() {
   const tab = getActiveTab();
   const list = document.getElementById('diff-history-list');
@@ -131,14 +135,29 @@ export async function UpdateHistory() {
     
     data.sort((a, b) => b.fileName.localeCompare(a.fileName));
 
-    // 1. 最新の世代番号を取得（これが今の作業ベースとなる世代）
-    const latestGeneration = Math.max(...data.map(item => item.generation || 0));
+    // 1. 本来の最新世代番号を取得
+    const latestGenNumber = Math.max(...data.map(item => item.generation || 0));
     
+    // 2. 現在「書き込み先」としてマークされているパスを特定
+    // selectedTargetDir が未設定なら、latestGenNumber を持つアイテムのディレクトリをデフォルトにする
+    let activeDirPath = selectedTargetDir;
+    if (!activeDirPath) {
+        const latestItem = data.find(item => item.generation === latestGenNumber);
+        if (latestItem) {
+            // ファイルパスからディレクトリ部分を抽出 (Go側のfilepath.Dir相当)
+            activeDirPath = latestItem.filePath.substring(0, latestItem.filePath.lastIndexOf('/')) 
+                         || latestItem.filePath.substring(0, latestItem.filePath.lastIndexOf('\\'));
+        }
+    }
+
     const itemsHtml = await Promise.all(data.map(async (item) => {
       const note = await ReadTextFile(item.filePath + ".note").catch(() => "");
-      
       const isDiffFile = item.fileName.toLowerCase().endsWith('.diff');
       const isArchive = !isDiffFile && item.generation === 0;
+
+      // このアイテムの親ディレクトリを特定
+      const itemDir = item.filePath.substring(0, item.filePath.lastIndexOf('/')) 
+                   || item.filePath.substring(0, item.filePath.lastIndexOf('\\'));
 
       let statusHtml = "";
       let genBadge = "";
@@ -149,37 +168,22 @@ export async function UpdateHistory() {
         genBadge = `<span style="font-size:10px; color:#fff; background:#2f8f5b; padding:1px 4px; border-radius:3px; margin-left:5px;">Archive</span>`;
       } else {
         const currentGen = item.generation || 1;
-        const isLatest = (currentGen === latestGeneration && latestGeneration > 0);
+        // 「アクティブなディレクトリ」に属しているかどうかで判定
+        const isTarget = (itemDir === activeDirPath);
 
-        // --- 修正の核心: 判定ロジックの変更 ---
-        // 「今現在のファイルとハッシュが合うか」ではなく、
-        // 「最新世代（Current）のフォルダに属しているか」を ✅ の基準にする
-        let statusColor = "#e74c3c"; // デフォルトは警告色
-        let statusIcon = "⚠️";
-        let statusText = "";
+        let statusColor = isTarget ? "#2f8f5b" : "#3B5998"; 
+        let statusIcon = isTarget ? "✅" : "📄";
+        let statusText = isTarget ? (i18n.compatible || "書き込み先 (Active)") : (i18n.genMismatch || "別世代 (クリックで切替)");
 
-        if (isLatest) {
-          // 同じ世代（最新ベース）に属していれば、描き進めてハッシュがズレていても ✅ とする
-          // これにより v1.1.0 のような「いつでも戻せる安心感」を復活させる
-          statusColor = "#2f8f5b"; 
-          statusIcon = "✅";
-          statusText = i18n.compatible || "互換性あり (現在の世代)";
-        } 
-        else {
-          // 別の世代（古いBase）に属している場合は ⚠️ を出し、Baseの切り替えが必要なことを示す
-          statusColor = "#3B5998"; // 警告ではなく「情報」としての青色
-          statusIcon = "📂";
-          statusText = i18n.genMismatch || "別世代のバックアップ (Base切替推奨)";
-        }
-        
-        const genLabel = i18n.generationLabel || "Generation";
-        const currentLabel = isLatest ? ` <span style="font-size:9px; opacity:0.9;">(Current)</span>` : "";
-        const badgeStyle = `font-size:10px; color:#fff; background:${statusColor}; padding:1px 4px; border-radius:3px; margin-left:5px; ${isLatest ? 'border: 1px solid #fff;' : ''}`;
+        const genLabel = i18n.generationLabel || "Gen";
+        const currentLabel = isTarget ? ` <span style="font-size:9px; opacity:0.9;">(Target)</span>` : "";
+        const badgeStyle = `font-size:10px; color:#fff; background:${statusColor}; padding:1px 4px; border-radius:3px; margin-left:5px; ${isTarget ? 'outline: 2px solid #2f8f5b; outline-offset: 1px;' : ''} cursor:pointer;`;
 
         statusHtml = `<div style="color:${statusColor}; font-weight:bold;">${statusIcon} ${statusText}</div>
-                      <div style="font-size:11px; color:#666;">${genLabel}: ${currentGen} ${isLatest ? '★' : ''}</div>`;
+                      <div style="font-size:11px; color:#666;">${genLabel}: ${currentGen} ${isTarget ? '★' : ''}</div>`;
         
-        genBadge = `<span style="${badgeStyle}">Gen.${currentGen}${currentLabel}</span>`;
+        // バッジにクリックイベント用のクラスを追加
+        genBadge = `<span class="gen-selector-badge" data-dir="${itemDir}" style="${badgeStyle}">${genLabel}.${currentGen}${currentLabel}</span>`;
       }
 
       const popupContent = `
@@ -189,7 +193,7 @@ export async function UpdateHistory() {
         ${note ? `<br><hr style="border:0; border-top:1px dashed #ccc; margin:5px 0;"><strong>Memo:</strong> ${note}` : ""}
       `;
       
-      return `<div class="diff-item">
+      return `<div class="diff-item" style="${itemDir === activeDirPath ? 'border-left: 4px solid #2f8f5b; background: #f0fff4;' : ''}">
           <div style="display:flex; align-items:center; width:100%;">
             <label style="display:flex; align-items:center; cursor:pointer; flex:1; min-width:0;">
               <input type="checkbox" class="diff-checkbox" value="${item.filePath}" style="margin-right:10px;">
@@ -207,6 +211,18 @@ export async function UpdateHistory() {
     }));
     
     list.innerHTML = itemsHtml.join('');
+
+    // --- イベントリスナーの追加 ---
+    // 世代バッジをクリックしてターゲットを切り替える
+    list.querySelectorAll('.gen-selector-badge').forEach(el => {
+        el.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            selectedTargetDir = el.getAttribute('data-dir');
+            UpdateHistory(); // 再描画して ✅ を更新
+        });
+    });
+
     setupHistoryPopups();
 
   } catch (err) { 
@@ -214,6 +230,7 @@ export async function UpdateHistory() {
     list.innerHTML = `<div class="info-msg" style="color:red;">Error: ${err.message || 'loading history'}</div>`; 
   }
 }
+
 
 
 function setupHistoryPopups() {

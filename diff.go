@@ -9,44 +9,49 @@ import (
 )
 
 
-
-
-
 func (a *App) BackupOrDiff(workFile, customDir, algo string) error {
 	root := customDir
 	if root == "" {
 		root = DefaultBackupDir(workFile)
 	}
 
-	// 1. 現在の書き込み先を特定 (baseN)
-	targetDir, currentIdx, err := a.ResolveGenerationDir(root, workFile)
-	if err != nil {
-		return err
+	var targetDir string
+	var currentIdx int
+	var err error
+
+	// --- 1. JS側から特定の世代フォルダ (.../baseN) が指定されているか判定 ---
+	baseFolder := filepath.Base(root)
+	if strings.HasPrefix(baseFolder, "base") {
+		// 指定があればそれを使う
+		targetDir = root
+		fmt.Sscanf(baseFolder, "base%d", &currentIdx)
+	} else {
+		// 指定がなければ（親フォルダなら）最新を探索
+		targetDir, currentIdx, err = a.ResolveGenerationDir(root, workFile)
+		if err != nil {
+			return err
+		}
+	}
+
+	// 念のためフォルダ作成
+	if _, err := os.Stat(targetDir); os.IsNotExist(err) {
+		os.MkdirAll(targetDir, 0755)
 	}
 
 	baseName := filepath.Base(workFile)
 	baseFull := filepath.Join(targetDir, baseName+".base")
-	// A. .baseファイル自体の存在チェック
-	baseExists := true
+
+	// --- 2. .baseファイル自体の存在チェックと自己修復 ---
 	if _, err := os.Stat(baseFull); os.IsNotExist(err) {
-		baseExists = false
-	}
-
-
-	// 【自己修復トリガー】
-	// .baseがない
-	if !baseExists{
-		// 現在の作業ファイルを .base として強制コピー（リベース）
 		if err := CopyFile(workFile, baseFull); err != nil {
 			return fmt.Errorf("failed to sync base file: %w", err)
 		}
 	}
-	// --- 修復完了 ---
 
 	ts := time.Now().Format("20060102_150405")
 	tempDiff := filepath.Join(os.TempDir(), fmt.Sprintf("%s.%s.tmp", baseName, ts))
 	
-	// 差分生成 (baseFull の存在が保証されている)
+	// 差分生成
 	if algo == "bsdiff" {
 		err = a.CreateBsdiff(baseFull, workFile, tempDiff)
 	} else {
@@ -57,7 +62,7 @@ func (a *App) BackupOrDiff(workFile, customDir, algo string) error {
 		return err
 	}
 
-	// 2. サイズ判定
+	// --- 3. サイズ・閾値判定 ---
 	workStat, _ := os.Stat(workFile)
 	diffStat, _ := os.Stat(tempDiff)
 	threshold := a.GetAutoBaseGenerationThreshold()
@@ -67,24 +72,20 @@ func (a *App) BackupOrDiff(workFile, customDir, algo string) error {
 	if threshold <= 0 { threshold = 0.8 }
 	
 	shouldNextGen := false
-	if workSize > 100*1024 { // 100KBより大きい場合のみ閾値判定
+	if workSize > 100*1024 { // 100KBより大きい場合のみ
 		if float64(diffSize) > float64(workSize)*threshold {
 			shouldNextGen = true
 		}
 	}
 	
 	if shouldNextGen {
-	
-		// --- 3a. 【サイズ超過】 世代交代ロジック ---
+		// --- 4a. 【サイズ超過】 世代交代ロジック ---
 		os.Remove(tempDiff)
-
 		newIdx := currentIdx + 1
 		newGenDir, err := a.CreateNewGeneration(root, newIdx, workFile)
 		if err != nil {
 			return err
 		}
-
-	
 
 		newBaseFull := filepath.Join(newGenDir, baseName+".base")
 		finalPath := filepath.Join(newGenDir, fmt.Sprintf("%s.%s.%s.diff", baseName, ts, algo))
@@ -95,10 +96,11 @@ func (a *App) BackupOrDiff(workFile, customDir, algo string) error {
 		return a.CreateHdiff(newBaseFull, workFile, finalPath)
 	}
 
-	// --- 3b. 【正常】 移動して確定 ---
+	// --- 4b. 【正常】 移動して確定 ---
 	finalPath := filepath.Join(targetDir, fmt.Sprintf("%s.%s.%s.diff", baseName, ts, algo))
 	return os.Rename(tempDiff, finalPath)
 }
+
 
 // ApplyMultiDiff は新旧混在・アルゴリズム不明でも自動判別＆リトライで適用します
 func (a *App) ApplyMultiDiff(workFile string, diffPaths []string, _ string) error {

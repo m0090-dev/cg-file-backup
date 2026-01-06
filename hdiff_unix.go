@@ -8,7 +8,12 @@ import (
 func (a *App) CreateHdiff(OldFile, NewFile, DiffFile string) error {
 	// Unix系では特権的なフラグ設定なしで実行
 	cmd := exec.Command("hdiffz", "-f", "-s", "-c-bzip2", OldFile, NewFile, DiffFile)
-	return cmd.Run()
+	err := cmd.Run()
+	if err == nil {
+		return nil 
+	}
+	cmdFallback := exec.Command("hdiffz", "-f", "-s", OldFile, NewFile, DiffFile)
+	return cmdFallback.Run()
 }
 
 // ApplyHdiff は外部バイナリ hpatchz を呼び出してパッチを適用します (Unix版)

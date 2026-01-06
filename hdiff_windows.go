@@ -17,7 +17,17 @@ func (a *App) CreateHdiff(OldFile, NewFile, DiffFile string) error {
 		CreationFlags: 0x08000000, // CREATE_NO_WINDOW
 	}
 	
-	return cmd.Run()
+	err := cmd.Run()
+	if err == nil {
+		return nil 
+	}
+	cmdFallback := exec.Command("hdiffz", "-f", "-s", OldFile, NewFile, DiffFile)
+	// Windowsでコンソールウィンドウを表示させない設定
+	cmdFallback.SysProcAttr = &syscall.SysProcAttr{
+		HideWindow:    true,
+		CreationFlags: 0x08000000, // CREATE_NO_WINDOW
+	}
+	return cmdFallback.Run()
 }
 
 // ApplyHdiff は外部バイナリ hpatchz を呼び出してパッチを適用します (Windows版)

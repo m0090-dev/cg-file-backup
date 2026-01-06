@@ -8,8 +8,8 @@ import (
 
 // CreateHdiff は外部バイナリ hdiffz を呼び出して差分を作成します (Windows版)
 func (a *App) CreateHdiff(OldFile, NewFile, DiffFile string) error {
-	// -f: 強制上書き, -s: ストリーミング, -c-bzip2: 圧縮
-	cmd := exec.Command("hdiffz", "-f", "-s", "-c-bzip2", OldFile, NewFile, DiffFile)
+	// -f: 強制上書き, -s: ストリーミング, -c-zstd: 圧縮
+	cmd := exec.Command("hdiffz", "-f", "-s", "-c-zstd", OldFile, NewFile, DiffFile)
 	
 	// Windowsでコンソールウィンドウを表示させない設定
 	cmd.SysProcAttr = &syscall.SysProcAttr{
@@ -17,17 +17,7 @@ func (a *App) CreateHdiff(OldFile, NewFile, DiffFile string) error {
 		CreationFlags: 0x08000000, // CREATE_NO_WINDOW
 	}
 	
-	err := cmd.Run()
-	if err == nil {
-		return nil 
-	}
-	cmdFallback := exec.Command("hdiffz", "-f", "-s", OldFile, NewFile, DiffFile)
-	// Windowsでコンソールウィンドウを表示させない設定
-	cmdFallback.SysProcAttr = &syscall.SysProcAttr{
-		HideWindow:    true,
-		CreationFlags: 0x08000000, // CREATE_NO_WINDOW
-	}
-	return cmdFallback.Run()
+	return cmd.Run()
 }
 
 // ApplyHdiff は外部バイナリ hpatchz を呼び出してパッチを適用します (Windows版)

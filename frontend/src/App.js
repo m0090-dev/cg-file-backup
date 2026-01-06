@@ -20,7 +20,8 @@ import {
   renderTabs,
   UpdateDisplay,
   UpdateHistory,
-  showFloatingMessage
+  showFloatingMessage,
+  showFloatingError
 } from './ui';
 
 import { setupGlobalEvents } from './events';
@@ -111,7 +112,7 @@ function setupDragAndDrop() {
 
       document.getElementById('drop-set-workfile').onclick = async () => {
         if (isDir) {
-          alert(i18n.dropErrorFolderAsFile || "フォルダはファイルとして設定できません");
+          showFloatingError(i18n.dropErrorFolderAsFile || "フォルダはファイルとして設定できません");
           return;
         }
         const tab = getActiveTab();
@@ -123,7 +124,7 @@ function setupDragAndDrop() {
 
       document.getElementById('drop-set-backupdir').onclick = () => {
         if (!isDir) {
-          alert(i18n.dropErrorFileAsFolder || "ファイルはフォルダとして設定できません");
+          showFloatingError(i18n.dropErrorFileAsFolder || "ファイルはフォルダとして設定できません");
           return;
         }
         const tab = getActiveTab();

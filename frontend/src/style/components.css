@@ -129,6 +129,8 @@
 #progress-bar { height: 100%; width: 0%; background-color: #28a745 !important; transition: width 0.2s; }
 #progress-status { font-size: 10px; color: #1e5c3a; text-align: center; font-weight: 800; display: none; }
 
+
+/*
 #message-area {
     position: absolute;
     top: 50px;
@@ -144,6 +146,40 @@
     box-shadow: 0 4px 15px rgba(0,0,0,0.3);
     z-index: 1000;
 }
+
+#message-area.error {
+    background-color: #d32f2f !important; 
+    color: white !important;
+}
+*/
+#message-area {
+    position: fixed; /* absoluteよりfixedの方が画面全体に対して浮くので確実 */
+    top: 20px;       /* 少し上に詰めるとコンパクトモードでも見やすい */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 240px;
+    padding: 10px;   /* 少し余裕を持たせる */
+    background-color: var(--success-green);
+    color: #fff;
+    font-size: 11px;
+    text-align: center;
+    border-radius: 6px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5); /* 影を強くして浮かせる */
+    z-index: 99999 !important; /* 何が何でも最前面に出す */
+    pointer-events: none;      /* メッセージ越しに下のボタンが押せるようにする */
+}
+
+/* 表示・非表示の切り替え（JSのclassListと連動） */
+#message-area.hidden {
+    display: none !important;
+}
+
+/* エラー時の色を強制 */
+#message-area.error {
+    background-color: #d32f2f !important;
+    color: #ffffff !important;
+}
+
 
 /* --- モーダル部品 --- */
 .modal-overlay {

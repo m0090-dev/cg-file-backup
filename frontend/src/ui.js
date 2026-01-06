@@ -16,15 +16,44 @@ import {
 
 import { switchTab, removeTab,updateExecute } from './actions';
 
-
-// UI描画・メッセージ系
+// UI描画・メッセージ系（通常版）
 export function showFloatingMessage(text) {
   const msgArea = document.getElementById('message-area');
   if (!msgArea) return;
+
+  // --- 追加：前回の「赤」が残っていたら消す ---
+  msgArea.classList.remove('error'); 
+  
   msgArea.textContent = text;
   msgArea.classList.remove('hidden');
+  
+  // 既存のタイマーと競合しないよう、単純に3秒後に隠す
   setTimeout(() => msgArea.classList.add('hidden'), 3000);
 }
+
+// エラー版
+export function showFloatingError(text) {
+  const msgArea = document.getElementById('message-area');
+  if (!msgArea) return;
+  
+  // 一旦リセットしてから赤を付ける
+  msgArea.classList.add('error');
+  msgArea.textContent = text;
+  msgArea.classList.remove('hidden');
+
+  setTimeout(() => {
+    msgArea.classList.add('hidden');
+    // 完全に隠れてから色を戻す
+    setTimeout(() => {
+      // まだ hidden 状態のときだけクラスを消す（連打対策）
+      if(msgArea.classList.contains('hidden')) {
+        msgArea.classList.remove('error');
+      }
+    }, 500);
+  }, 3000);
+}
+
+
 
 export function renderRecentFiles() {
   const list = document.getElementById('recent-list');

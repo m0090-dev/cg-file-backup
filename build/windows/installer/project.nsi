@@ -137,11 +137,11 @@ Section
 
     SetOutPath $INSTDIR
     !insertmacro wails.files
-    File /r "..\..\..\bzip2-bin"
     File "..\..\..\LICENSE.md"
     File "..\..\..\CREDITS.md"
+    File /r "..\..\..\licenses"
     File /r "..\..\..\hdiff-bin"
-
+    File /r "..\..\..\bzip2-bin"
 
 
 

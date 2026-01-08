@@ -55,7 +55,6 @@ def update_app_config_version(new_version):
 def create_release_package():
     # 1. 引数の設定
     parser = argparse.ArgumentParser(description="cg-file-backup packaging script")
-    # version を positional 引数からオプション（任意）に変更
     parser.add_argument("--ver", help="Override version string (default: read from wails.json)")
     parser.add_argument("--zip", action="store_true", help="Create a zip archive of the package")
     parser.add_argument("--clean", action="store_true", help="Remove folders after processing")
@@ -105,6 +104,15 @@ def create_release_package():
             print(f"Copying external dependency: {bin_dir}")
             shutil.copytree(bin_dir, os.path.join(dist_dir, bin_dir))
 
+    # 5.5 サードパーティライセンスディレクトリ (licenses/) のコピー
+    # go-licenses save ./cmd/... --save_path=licenses で生成されたものを想定
+    third_party_licenses_dir = "licenses"
+    if os.path.exists(third_party_licenses_dir):
+        print(f"Copying third-party licenses directory: {third_party_licenses_dir}")
+        shutil.copytree(third_party_licenses_dir, os.path.join(dist_dir, third_party_licenses_dir))
+    else:
+        print(f"Warning: {third_party_licenses_dir} directory not found. Skip copying.")
+
     # 6. LICENSE/CREDITSのコピー
     found_license = None
     for pattern in ["LICENSE", "LICENSE.txt", "LICENSE.md"]:
@@ -149,6 +157,12 @@ def create_release_package():
                             dest_f = shutil.copy2(src_f, dest_rb)
                             os.chmod(dest_f, 0o755)
 
+            # .deb内にも licenses/ を含める (usr/share/doc 配下に配置するのが一般的)
+            if os.path.exists(os.path.join(dist_dir, third_party_licenses_dir)):
+                print(f"Including {third_party_licenses_dir} in .deb package")
+                shutil.copytree(os.path.join(dist_dir, third_party_licenses_dir), 
+                                os.path.join(doc_path, third_party_licenses_dir))
+
             if found_license:
                 shutil.copy2(found_license, os.path.join(doc_path, "copyright"))
 
@@ -161,7 +175,7 @@ Maintainer: Developer <dev@example.com>
 Depends: libwebkit2gtk-4.0-37, libgtk-3-0
 Description: {project_name} backup tool
  A file backup utility using Wails.
- Includes hdiff and bzip2 dependencies.
+ Includes hdiff, bzip2 and third-party licenses.
 """
             with open(os.path.join(deb_root, "DEBIAN/control"), "w") as f:
                 f.write(control_content)

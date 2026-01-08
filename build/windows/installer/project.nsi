@@ -50,6 +50,7 @@ VIAddVersionKey "ProductName"     "${INFO_PRODUCTNAME}"
 # Enable HiDPI support. https://nsis.sourceforge.io/Reference/ManifestDPIAware
 ManifestDPIAware true
 
+!include "LogicLib.nsh"
 !include "MUI.nsh"
 !include "MultiUser.nsh"
 
@@ -80,7 +81,22 @@ InstallDir "$PROGRAMFILES64\${INFO_COMPANYNAME}\${INFO_PRODUCTNAME}" # Default i
 ShowInstDetails show # This will always show the installation details.
 
 Function .onInit
+   !insertmacro MULTIUSER_INIT
+    
+    # モードに応じてデフォルトのインストール先を切り替える
+    mode_all:
+        StrCpy $INSTDIR "$PROGRAMFILES64\${INFO_COMPANYNAME}\${INFO_PRODUCTNAME}"
+        Goto done
+    mode_current:
+        StrCpy $INSTDIR "$LOCALAPPDATA\${INFO_COMPANYNAME}\${INFO_PRODUCTNAME}"
+        Goto done
+    
+    done:
    !insertmacro wails.checkArchitecture
+FunctionEnd
+
+Function un.onInit
+   !insertmacro MULTIUSER_UNINIT
 FunctionEnd
 
 Section

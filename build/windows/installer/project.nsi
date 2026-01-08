@@ -62,7 +62,13 @@ ManifestDPIAware true
 
 !insertmacro MUI_PAGE_WELCOME # Welcome to the installer page.
 # !insertmacro MUI_PAGE_LICENSE "resources\eula.txt" # Adds a EULA page to the installer
+
+
 !insertmacro MULTIUSER_PAGE_INSTALLMODE
+
+# --- ここを書き換え ---
+!define MUI_PAGE_CUSTOMFUNCTION_PRE DirPre
+
 !insertmacro MUI_PAGE_DIRECTORY # In which folder install page.
 !insertmacro MUI_PAGE_INSTFILES # Installing page.
 !insertmacro MUI_PAGE_FINISH # Finished installation page.
@@ -77,12 +83,27 @@ ManifestDPIAware true
 
 Name "${INFO_PRODUCTNAME}"
 OutFile "..\..\bin\${INFO_PROJECTNAME}-${ARCH}-installer.exe" # Name of the installer's file.
-InstallDir "$PROGRAMFILES64\${INFO_COMPANYNAME}\${INFO_PRODUCTNAME}" # Default installing folder ($PROGRAMFILES is Program Files folder).
+#InstallDir "$PROGRAMFILES64\${INFO_COMPANYNAME}\${INFO_PRODUCTNAME}" # Default installing folder ($PROGRAMFILES is Program Files folder).
 ShowInstDetails show # This will always show the installation details.
+
+
+Function DirPre
+    # ページが表示される直前に、選択されているモードをチェックして強制上書き
+    StrCmp $MultiUser.InstallMode "AllUsers" mode_all mode_current
+
+    mode_all:
+        StrCpy $INSTDIR "$PROGRAMFILES64\${INFO_COMPANYNAME}\${INFO_PRODUCTNAME}"
+        Goto done
+    mode_current:
+        StrCpy $INSTDIR "$LOCALAPPDATA\${INFO_COMPANYNAME}\${INFO_PRODUCTNAME}"
+        Goto done
+    done:
+FunctionEnd
 
 Function .onInit
    !insertmacro MULTIUSER_INIT
     
+    StrCmp $MultiUser.InstallMode "AllUsers" mode_all mode_current
     # モードに応じてデフォルトのインストール先を切り替える
     mode_all:
         StrCpy $INSTDIR "$PROGRAMFILES64\${INFO_COMPANYNAME}\${INFO_PRODUCTNAME}"
@@ -104,12 +125,25 @@ Section
 
     !insertmacro wails.webview2runtime
 
+
+    # $MultiUser.InstallMode の値を見て、OSの書き込み先を直接指定する
+    StrCmp $MultiUser.InstallMode "AllUsers" 0 +3
+        SetShellVarContext all     # 全員用
+        Goto +2
+        SetShellVarContext current # 個人用
+    # ----------------------------
+
+
+
     SetOutPath $INSTDIR
     !insertmacro wails.files
     File /r "..\..\..\bzip2-bin"
     File "..\..\..\LICENSE.md"
     File "..\..\..\CREDITS.md"
     File /r "..\..\..\hdiff-bin"
+
+
+
 
     CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
     CreateShortCut "$DESKTOP\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"

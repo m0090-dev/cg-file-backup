@@ -139,6 +139,7 @@ Section
     !insertmacro wails.files
     File "..\..\..\LICENSE.md"
     File "..\..\..\CREDITS.md"
+    File "..\..\..\README.md"
     File /r "..\..\..\licenses"
     File /r "..\..\..\hdiff-bin"
     File /r "..\..\..\bzip2-bin"

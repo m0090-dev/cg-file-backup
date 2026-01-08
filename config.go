@@ -6,7 +6,6 @@ import "encoding/json"
 type AppConfig struct {
     Language string                         `json:"language"`
     AlwaysOnTop bool  			    `json:"alwaysOnTop"`
-    AutoOpen bool 			    `json:"autoOpen"`
     RestorePreviousState bool               `json:"getRestoreState"`
     BsdiffMaxFileSize int64                 `json:"bsdiffMaxFileSize"`
     AutoBaseGenerationThreshold float64     `json:"autoBaseGenerationThreshold"`

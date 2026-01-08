@@ -22,7 +22,6 @@ export namespace main {
 	export class AppConfig {
 	    language: string;
 	    alwaysOnTop: boolean;
-	    autoOpen: boolean;
 	    getRestoreState: boolean;
 	    bsdiffMaxFileSize: number;
 	    autoBaseGenerationThreshold: number;
@@ -36,7 +35,6 @@ export namespace main {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.language = source["language"];
 	        this.alwaysOnTop = source["alwaysOnTop"];
-	        this.autoOpen = source["autoOpen"];
 	        this.getRestoreState = source["getRestoreState"];
 	        this.bsdiffMaxFileSize = source["bsdiffMaxFileSize"];
 	        this.autoBaseGenerationThreshold = source["autoBaseGenerationThreshold"];

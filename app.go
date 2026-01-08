@@ -43,7 +43,7 @@ func (a *App) GetConfig() *AppConfig {
 func (a *App) SaveConfig(config AppConfig) error {
 	a.cfg.AlwaysOnTop = config.AlwaysOnTop
 	a.cfg.Language = config.Language
-	a.cfg.AutoOpen = config.AutoOpen
+	a.cfg.RestorePreviousState = config.RestorePreviousState
 	data, err := json.MarshalIndent(a.cfg, "", "  ")
 	if err != nil {
 		return err

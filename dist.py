@@ -113,7 +113,7 @@ def create_release_package():
     else:
         print(f"Warning: {third_party_licenses_dir} directory not found. Skip copying.")
 
-    # 6. LICENSE/CREDITSのコピー
+    # 6. LICENSE/CREDITS/READMEのコピー
     found_license = None
     for pattern in ["LICENSE", "LICENSE.txt", "LICENSE.md"]:
         if os.path.exists(pattern):
@@ -125,6 +125,16 @@ def create_release_package():
         if os.path.exists(pattern):
             shutil.copy2(pattern, dist_dir)
             break
+
+    for pattern in ["README", "README.txt", "README.md"]:
+        if os.path.exists(pattern):
+            shutil.copy2(pattern, dist_dir)
+            break
+
+
+
+
+
 
     # 7. Linux環境での .deb パッケージ作成
     deb_file_path = f"{dist_dir}.deb"

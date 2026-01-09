@@ -67,6 +67,7 @@ export function setupGlobalEvents() {
         addToRecentFiles(res);
         renderTabs(); UpdateDisplay(); UpdateHistory();
         saveCurrentSession();
+        showFloatingMessage(i18n.updatedWorkFile);
       }
     } else if (id === 'backupdir-btn') {
       const res = await SelectBackupFolder();
@@ -74,6 +75,7 @@ export function setupGlobalEvents() {
         tab.backupDir = res;
         UpdateDisplay(); UpdateHistory();
         saveCurrentSession();
+	showFloatingMessage(i18n.updatedBackupDir);
       }
     } else if (id === 'execute-backup-btn' || id === 'compact-execute-btn') {
       OnExecute();

@@ -48,6 +48,29 @@ export function removeTab(id) {
   saveCurrentSession();
 }
 
+export function reorderTabs(draggedId, targetId) {
+  // 文字列IDを比較するために型を合わせる（念のため）
+  const draggedIndex = tabs.findIndex(t => String(t.id) === String(draggedId));
+  const targetIndex = tabs.findIndex(t => String(t.id) === String(targetId));
+
+  if (draggedIndex !== -1 && targetIndex !== -1 && draggedIndex !== targetIndex) {
+    // 1. 配列のコピーを作成して操作する（リアクティブな問題を避けるため）
+    const [removed] = tabs.splice(draggedIndex, 1);
+    tabs.splice(targetIndex, 0, removed);
+    
+    // 2. セッションを強制保存（ここで localStorage などに書き込まれる）
+    saveCurrentSession();
+    
+    // 3. 画面全体を再描画
+    renderTabs();
+    
+    // 4. アクティブなタブの内容も念のため更新
+    UpdateDisplay();
+  }
+}
+
+
+
 // --- 初期化: 上限サイズの取得 ---
 (async () => {
     const size = await GetBsdiffMaxFileSize();

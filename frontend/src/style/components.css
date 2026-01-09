@@ -84,6 +84,19 @@
     display: flex; align-items: center; justify-content: center;
 }
 
+/* ドラッグ中の要素 */
+.tab-item.dragging {
+    opacity: 0.5;
+    background: #e0e0e0;
+}
+
+/* 重なった時のインジケータ（左側に青い線を出す例） */
+.tab-item.drag-over {
+    border-left: 3px solid #3B5998;
+    background: #f0f4ff;
+}
+
+
 /* --- 最近使ったファイル (ポップアップ) --- */
 .recent-files-section {
     position: absolute;

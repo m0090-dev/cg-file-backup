@@ -20,7 +20,7 @@ import {
     GetConfigDir
 } from '../wailsjs/go/main/App';
 
-import { switchTab, removeTab,updateExecute } from './actions';
+import { switchTab, removeTab,updateExecute,reorderTabs } from './actions';
 
 // UI描画・メッセージ系（通常版）
 export function showFloatingMessage(text) {
@@ -107,6 +107,7 @@ export function renderRecentFiles() {
     };
   });
 }
+/*
 export function renderTabs() {
   const list = document.getElementById('tabs-list');
   if (!list) return;
@@ -127,6 +128,83 @@ export function renderTabs() {
     list.appendChild(el);
   });
 }
+*/
+
+/**
+ * タブリストを描画する（ドラッグ＆ドロップによる並び替え機能付き）
+ */
+export function renderTabs() {
+  const list = document.getElementById('tabs-list');
+  if (!list) return;
+  list.innerHTML = '';
+
+  tabs.forEach((tab) => {
+    const el = document.createElement('div');
+    // 基本クラス
+    el.className = `tab-item ${tab.active ? 'active' : ''}`;
+    
+    // 表示名の決定
+    const fileName = tab.workFile 
+      ? tab.workFile.split(/[\\/]/).pop() 
+      : (i18n?.selectedWorkFile || "New Tab");
+    el.textContent = fileName;
+
+    // --- ドラッグ＆ドロップ設定 ---
+    el.draggable = true;
+    el.dataset.id = tab.id;
+
+    // ドラッグ開始
+    el.ondragstart = (e) => {
+      el.classList.add('dragging');
+      // ドラッグ中のデータをセット（IDを渡す）
+      e.dataTransfer.setData('text/plain', tab.id);
+      e.dataTransfer.effectAllowed = 'move';
+    };
+
+    // ドラッグ中（他のタブの上を通過時）
+    el.ondragover = (e) => {
+      e.preventDefault(); // ドロップを許可するために必須
+      e.dataTransfer.dropEffect = 'move';
+      el.classList.add('drag-over');
+    };
+
+    // ドラッグが離れた時
+    el.ondragleave = () => {
+      el.classList.remove('drag-over');
+    };
+
+    // ドラッグ終了（成功・失敗問わず）
+    el.ondragend = () => {
+      el.classList.remove('dragging');
+      // 全てのハイライトを消去
+      list.querySelectorAll('.tab-item').forEach(item => item.classList.remove('drag-over'));
+    };
+
+    // ドロップされた時
+    el.ondrop = (e) => {
+      e.preventDefault();
+      const draggedId = e.dataTransfer.getData('text/plain');
+      const targetId = el.dataset.id;
+
+      if (draggedId !== targetId) {
+        // stateまたはactionsにある並び替え関数を呼び出す
+        reorderTabs(draggedId, targetId);
+      }
+    };
+
+    // --- 既存のクリックイベント ---
+    el.onclick = () => switchTab(tab.id);
+    
+    // 右クリックで削除
+    el.oncontextmenu = (e) => {
+      e.preventDefault();
+      if (tabs.length > 1) removeTab(tab.id);
+    };
+
+    list.appendChild(el);
+  });
+}
+
 
 
 export function UpdateDisplay() {

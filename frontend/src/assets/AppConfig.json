@@ -33,7 +33,7 @@
       "japanese": "Japanese",
       "restartRequired": "Language change will take effect after restart.",
       "about": "About",
-      "aboutText": "cg-file-backup 1.1.1(2026)\n© 2025 m0090-dev.",
+      "aboutText": "cg-file-backup 1.1.2(2026)\n© 2025 m0090-dev.",
       "selectFileFirst": "Please select a work file first.",
       "restoreConfirm": "Restore selected versions? This will create a new file.",
       "restoreError": "Restore Failed",
@@ -61,9 +61,18 @@
       "compactTitle": "Compact Mode",
       "compatible": "Compatible",
       "genMismatch": "Different Generation (Base mismatch)",
-      "fullArchive": "📦 Full Archive (Independent)",
+      "fullArchive": " Full Archive (Independent)",
       "generationLabel": "Generation",
-      "noChecksum": "Unknown Integrity (Missing checksum file)"
+      "noChecksum": "Unknown Integrity (Missing checksum file)",
+      "backupMemo": "Note",
+      "memoSaved": "Note saved",
+      "memoSaveError": "Failed to save note.",
+      "enterNewTag": "Enter new preset tag content",
+      "confirmDeleteTag": "Delete tag \"#{tag}\"?",
+      "addTagTitle": "Add preset tag",
+      "memoPlaceholder": "Enter note here...",
+      "cancel": "Cancel",
+      "save": "Save"
     },
     "ja": {
       "settings": "設定",
@@ -93,7 +102,7 @@
       "japanese": "日本語",
       "restartRequired": "言語設定は再起動後に反映されます。",
       "about": "ソフト情報",
-      "aboutText": "cg-file-backup 1.1.1(2026)\n© 2025 m0090-dev.",
+      "aboutText": "cg-file-backup 1.1.2(2026)\n© 2025 m0090-dev.",
       "selectFileFirst": "先に作業ファイルを選択してください。",
       "restoreConfirm": "選択したバージョンを復元しますか？新しいファイルが生成されます。",
       "restoreError": "復元失敗",
@@ -121,9 +130,18 @@
       "compactTitle": "コンパクトモード",
       "compatible": "互換性あり",
       "genMismatch": "世代が異なります (Base不一致)",
-      "fullArchive": "📦 フルアーカイブ (独立復元可能)",
+      "fullArchive": " フルアーカイブ (独立復元可能)",
       "generationLabel": "世代",
-      "noChecksum": "整合性不明 (設定ファイル紛失)"
+      "noChecksum": "整合性不明 (設定ファイル紛失)",
+      "backupMemo": "メモ",
+      "memoSaved": "メモを保存しました",
+      "memoSaveError": "メモの保存に失敗しました。",
+      "enterNewTag": "新しい定型文を入力してください",
+      "confirmDeleteTag": "タグ「#{tag}」を削除しますか？",
+      "addTagTitle": "定型文を追加",
+      "memoPlaceholder": "メモを入力してください...",
+      "cancel": "キャンセル",
+      "save": "保存"
     }
   }
 }

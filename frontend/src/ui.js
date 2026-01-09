@@ -9,9 +9,15 @@ import {
 } from './state';
 
 import { 
-    GetBackupList, 
-    ReadTextFile, 
-    GetFileSize 
+  showMemoDialog 
+} from './memo.js';
+
+import { 
+    GetBackupList,
+    GetFileSize,
+    WriteTextFile,
+    ReadTextFile,
+    GetConfigDir
 } from '../wailsjs/go/main/App';
 
 import { switchTab, removeTab,updateExecute } from './actions';
@@ -79,6 +85,7 @@ export function renderRecentFiles() {
         renderRecentFiles(); // state側で呼べないためここで実行
         renderTabs(); UpdateDisplay(); UpdateHistory();
         saveCurrentSession();
+	showFloatingMessage(i18n.updatedWorkFile);
         const popup = document.querySelector('.recent-files-section');
         if (popup) { popup.style.display = 'none'; setTimeout(() => popup.style.removeProperty('display'), 500); }
       } catch (err) {
@@ -179,9 +186,6 @@ export async function UpdateHistory() {
         activeDirPath = first.filePath.replace(/[\\/][^\\/]+$/, "");
     }
 
-
-
-
     const itemsHtml = await Promise.all(data.map(async (item) => {
       const note = await ReadTextFile(item.filePath + ".note").catch(() => "");
       const isDiffFile = item.fileName.toLowerCase().endsWith('.diff');
@@ -216,7 +220,7 @@ export async function UpdateHistory() {
         genBadge = `<span class="gen-selector-badge" data-dir="${itemDir}" style="${badgeStyle}">${genLabel}.${currentGen}${currentLabel}</span>`;
       }
 
-      const popupContent = `${statusHtml}<hr style="border:0; border-top:1px solid #eee; margin:5px 0;"><strong>Path:</strong> ${item.filePath}${note ? `<br><hr style="border:0; border-top:1px dashed #ccc; margin:5px 0;"><strong>Memo:</strong> ${note}` : ""}`;
+      const popupContent = `${statusHtml}<hr style="border:0; border-top:1px solid #eee; margin:5px 0;"><strong>Path:</strong> ${item.filePath}${note ? `<br><hr style="border:0; border-top:1px dashed #ccc; margin:5px 0;"><strong>${i18n.backupMemo}:</strong> ${note}` : ""}`;
       
       return `<div class="diff-item" style="${itemDir === activeDirPath ? 'border-left: 4px solid #2f8f5b; background: #f0fff4;' : ''}">
           <div style="display:flex; align-items:center; width:100%;">
@@ -244,9 +248,35 @@ export async function UpdateHistory() {
             e.stopPropagation();
             // ユーザーの意思を tab.selectedTargetDir に叩き込む
             tab.selectedTargetDir = el.getAttribute('data-dir');
-	    saveCurrentSession();
+            saveCurrentSession();
             UpdateHistory(); 
         });
+    });
+
+ // --- メモボタンの修正版リスナー ---
+    list.querySelectorAll('.note-btn').forEach(btn => {
+      btn.onclick = async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const path = btn.getAttribute('data-path');
+        const notePath = path + ".note";
+
+        // ファイルから現在のメモを読み込み
+        const currentNote = await ReadTextFile(notePath).catch(() => "");
+        
+        // ダイアログを表示（冒頭でインポート済みの関数）
+        showMemoDialog(currentNote, async (newText) => {
+          try {
+            await WriteTextFile(notePath, newText);
+            showFloatingMessage(i18n.memoSaved);
+            UpdateHistory(); // 再描画
+          } catch (err) {
+            console.error(err);
+            showFloatingError(i18n.memoSaveError);
+          }
+        });
+      };
     });
 
     setupHistoryPopups();
@@ -256,6 +286,9 @@ export async function UpdateHistory() {
     list.innerHTML = `<div class="info-msg" style="color:red;">Error: ${err.message || 'loading history'}</div>`; 
   }
 }
+
+
+
 
 function setupHistoryPopups() {
   const tooltip = document.getElementById('custom-tooltip') || createTooltipElement();

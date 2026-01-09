@@ -31,6 +31,8 @@ export async function SaveTags(tags) {
     const path = await getTagsFilePath();
     await window.go.main.App.WriteTextFile(path, JSON.stringify(tags));
 }
+
+
 /**
  * 再利用可能なメモ入力ダイアログを表示する
  * すべてのテキストはグローバルの i18n オブジェクトを参照します
@@ -48,19 +50,29 @@ export async function showMemoDialog(initialText = "", onSave) {
     // 定型文の初期読み込み
     let tags = await LoadTags();
 
+    // i18n の安全な参照（Undefined 対策）
+    const t = {
+        backupMemo: i18n?.backupMemo || 'Note',
+        addTagTitle: i18n?.addTagTitle || 'Add Tag',
+        memoPlaceholder: i18n?.memoPlaceholder || '...',
+        cancel: i18n?.cancel || 'Cancel',
+        save: i18n?.save || 'Save',
+        enterNewTag: i18n?.enterNewTag || 'Enter tag content',
+        confirmDeleteTag: i18n?.confirmDeleteTag || 'Delete #{tag}?'
+    };
+
     // ダイアログのHTML構造
-    // 翻訳項目: backupMemo, cancel, save
     overlay.innerHTML = `
         <div class="memo-dialog">
-            <div class="memo-dialog-header"> ${i18n.backupMemo}</div>
+            <div class="memo-dialog-header"> ${t.backupMemo}</div>
             <div class="memo-tag-container">
                 <div id="dialog-tag-list" style="display:inline-block;"></div>
-                <button id="dialog-tag-add-btn" class="tag-add-btn" title="${i18n.addTagTitle || 'Add Tag'}">+</button>
+                <button id="dialog-tag-add-btn" class="tag-add-btn" title="${t.addTagTitle}">+</button>
             </div>
-            <textarea id="dialog-memo-input" rows="3" placeholder="${i18n.memoPlaceholder || '...'}"></textarea>
+            <textarea id="dialog-memo-input" class="memo-textarea" rows="3" placeholder="${t.memoPlaceholder}"></textarea>
             <div class="memo-dialog-footer">
-                <button id="memo-cancel-btn" class="memo-btn-secondary">${i18n.cancel}</button>
-                <button id="memo-save-btn" class="memo-btn-primary">${i18n.save}</button>
+                <button id="memo-cancel-btn" class="memo-btn-secondary">${t.cancel}</button>
+                <button id="memo-save-btn" class="memo-btn-primary">${t.save}</button>
             </div>
         </div>
     `;
@@ -72,6 +84,14 @@ export async function showMemoDialog(initialText = "", onSave) {
     
     input.value = initialText;
     input.focus();
+
+    // --- マウス操作（コピー・貼り付け）を有効にするための処理 ---
+    // 入力欄での右クリックメニューをオーバーレイの onclick から保護する
+    input.addEventListener('contextmenu', (e) => {
+        e.stopPropagation(); 
+    });
+    // 入力欄でのクリックも念のため保護
+    input.onclick = (e) => e.stopPropagation();
 
     // --- タグリストの描画と保存ロジック ---
     const renderTags = () => {
@@ -89,14 +109,14 @@ export async function showMemoDialog(initialText = "", onSave) {
                 input.focus();
             };
 
-            // 右クリック：タグの削除と保存
-            // 翻訳項目: confirmDeleteTag
+            // 右クリック：タグの削除
             span.oncontextmenu = async (e) => {
                 e.preventDefault();
-                const confirmMsg = i18n.confirmDeleteTag ? i18n.confirmDeleteTag.replace('{tag}', tag) : `Delete #${tag}?`;
+                e.stopPropagation();
+                const confirmMsg = t.confirmDeleteTag.replace('{tag}', tag);
                 if (confirm(confirmMsg)) {
                     tags.splice(index, 1);
-                    await SaveTags(tags); // ここで tags.json を更新
+                    await SaveTags(tags);
                     renderTags();
                 }
             };
@@ -104,32 +124,38 @@ export async function showMemoDialog(initialText = "", onSave) {
         });
     };
 
-    // 初回表示
     renderTags();
 
     // --- 定型文の新規追加ボタン ---
-    // 翻訳項目: enterNewTag
     overlay.querySelector('#dialog-tag-add-btn').onclick = async (e) => {
         e.stopPropagation();
-        const newTag = prompt(i18n.enterNewTag);
+        const newTag = prompt(t.enterNewTag);
         if (newTag && newTag.trim() !== "") {
             const cleanTag = newTag.replace(/^#/, "").trim();
             if (!tags.includes(cleanTag)) {
                 tags.push(cleanTag);
-                await SaveTags(tags); // ここで tags.json を更新
+                await SaveTags(tags);
                 renderTags();
             }
         }
     };
 
     // --- ダイアログのボタン操作 ---
-    overlay.querySelector('#memo-save-btn').onclick = () => {
+    overlay.querySelector('#memo-save-btn').onclick = (e) => {
+        e.stopPropagation();
         if (onSave) onSave(input.value.trim());
         overlay.remove();
     };
 
-    overlay.querySelector('#memo-cancel-btn').onclick = () => overlay.remove();
+    overlay.querySelector('#memo-cancel-btn').onclick = (e) => {
+        e.stopPropagation();
+        overlay.remove();
+    };
 
-    // 外側クリックで閉じる
-    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+    // 外側クリックで閉じる（targetが自分自身＝背景の時のみ実行）
+    overlay.onclick = (e) => {
+        if (e.target === overlay) {
+            overlay.remove();
+        }
+    };
 }

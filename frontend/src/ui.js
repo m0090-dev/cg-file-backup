@@ -107,28 +107,7 @@ export function renderRecentFiles() {
     };
   });
 }
-/*
-export function renderTabs() {
-  const list = document.getElementById('tabs-list');
-  if (!list) return;
-  list.innerHTML = '';
-  tabs.forEach(tab => {
-    const el = document.createElement('div');
-    el.className = `tab-item ${tab.active ? 'active' : ''}`;
-    const fileName = tab.workFile ? tab.workFile.split(/[\\/]/).pop() : (i18n?.selectedWorkFile || "New Tab");
-    el.textContent = fileName;
 
-    // --- 修正: dispatchEvent ではなく actions の関数を直接呼ぶ ---
-    el.onclick = () => switchTab(tab.id); 
-    el.oncontextmenu = (e) => { 
-      e.preventDefault(); 
-      if (tabs.length > 1) removeTab(tab.id); 
-    };
-    
-    list.appendChild(el);
-  });
-}
-*/
 
 /**
  * タブリストを描画する（ドラッグ＆ドロップによる並び替え機能付き）

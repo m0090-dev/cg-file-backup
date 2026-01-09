@@ -89,6 +89,7 @@ export async function showMemoDialog(initialText = "", onSave) {
     // 入力欄での右クリックメニューをオーバーレイの onclick から保護する
     input.addEventListener('contextmenu', (e) => {
         e.stopPropagation(); 
+        return true;   
     });
     // 入力欄でのクリックも念のため保護
     input.onclick = (e) => e.stopPropagation();

@@ -28,6 +28,7 @@ func main() {
 		Width:         660,
 		Height:        500,
 		MaxWidth: 660,
+		EnableDefaultContextMenu: true,
 		MaxHeight: 500,
 		MinWidth:      660,
 		MinHeight:     500,

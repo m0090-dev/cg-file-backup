@@ -133,3 +133,11 @@
     background: #444;
     border-radius: 2px;
 }
+
+.memo-textarea {
+    /* Windows環境で選択とメニューを確実に有効化する */
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    -ms-user-select: text !important; /* IE/Old Edge用 */
+    pointer-events: auto !important;
+}

@@ -108,7 +108,6 @@ export function renderRecentFiles() {
   });
 }
 
-
 /**
  * タブリストを描画する（ドラッグ＆ドロップによる並び替え機能付き）
  */
@@ -116,6 +115,9 @@ export function renderTabs() {
   const list = document.getElementById('tabs-list');
   if (!list) return;
   list.innerHTML = '';
+
+  // ポップアップ管理用
+  let tooltip = null;
 
   tabs.forEach((tab) => {
     const el = document.createElement('div');
@@ -127,6 +129,41 @@ export function renderTabs() {
       ? tab.workFile.split(/[\\/]/).pop() 
       : (i18n?.selectedWorkFile || "New Tab");
     el.textContent = fileName;
+
+    // --- 【追加】マウスホバーによるポップアップ表示 ---
+    el.addEventListener('mouseenter', (e) => {
+      if (tooltip) tooltip.remove();
+
+      tooltip = document.createElement('div');
+      tooltip.className = 'tab-tooltip';
+      
+      const fullPath = tab.workFile || "No file selected";
+      // 内容：タブ名(強調) + フルパス(コード風)
+      tooltip.innerHTML = `<b>${fileName}</b><code>${fullPath}</code>`;
+      
+      document.body.appendChild(tooltip);
+
+      // 表示位置の計算（タブの直下）
+      const rect = el.getBoundingClientRect();
+      tooltip.style.left = `${rect.left}px`;
+      tooltip.style.top = `${rect.bottom + 5}px`;
+    });
+
+    // マウスが離れたらポップアップを消す
+    el.addEventListener('mouseleave', () => {
+      if (tooltip) {
+        tooltip.remove();
+        tooltip = null;
+      }
+    });
+
+    // ドラッグ開始時やクリック時にもポップアップが残らないように制御
+    el.addEventListener('mousedown', () => {
+      if (tooltip) {
+        tooltip.remove();
+        tooltip = null;
+      }
+    });
 
     // --- ドラッグ＆ドロップ設定 ---
     el.draggable = true;
@@ -183,7 +220,6 @@ export function renderTabs() {
     list.appendChild(el);
   });
 }
-
 
 
 export function UpdateDisplay() {
@@ -344,11 +380,9 @@ export async function UpdateHistory() {
   }
 }
 
-
-
-
 function setupHistoryPopups() {
-  const tooltip = document.getElementById('custom-tooltip') || createTooltipElement();
+  // IDを history-tooltip に変更
+  const tooltip = document.getElementById('history-tooltip') || createTooltipElement();
   const targets = document.querySelectorAll('.diff-name');
 
   targets.forEach(target => {
@@ -357,7 +391,7 @@ function setupHistoryPopups() {
       tooltip.innerHTML = content;
       tooltip.classList.remove('hidden');
       
-      // 位置計算
+      // 位置計算（ロジックは維持）
       const rect = target.getBoundingClientRect();
       tooltip.style.left = `${rect.left}px`;
       tooltip.style.top = `${rect.bottom + 5}px`;
@@ -371,8 +405,9 @@ function setupHistoryPopups() {
 
 function createTooltipElement() {
   const el = document.createElement('div');
-  el.id = 'custom-tooltip';
-  el.className = 'custom-tooltip hidden';
+  // IDとクラス名を history-tooltip に変更
+  el.id = 'history-tooltip';
+  el.className = 'history-tooltip hidden';
   document.body.appendChild(el);
   return el;
 }

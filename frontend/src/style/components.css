@@ -104,30 +104,71 @@
     right: 0;
     z-index: 1000;
     width: 240px;
-    margin-top: 2px;
-    padding: 8px;
-    background: #ffffff;
-    border: 1px solid #ddd;
+    margin-top: 4px; /* わずかに隙間をあけて視認性アップ */
+    padding: 10px;
+    background: var(--modal-bg); /* #1e1e1e */
+    border: 1px solid var(--modal-border);
     border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
     display: none; 
     pointer-events: none;
+    animation: tabTooltipFadeIn 0.15s ease-out; /* 他のポップアップと共通の動き */
 }
+
+/* ホバー時の表示制御 */
 #workfile-btn:hover + .recent-files-section,
 .recent-files-section:hover {
     display: block;
     pointer-events: auto;
 }
+
+/* タイトル部分 */
 .recent-title {
-    font-size: 10px; font-weight: bold; color: #888;
-    margin-bottom: 6px; border-bottom: 1px solid #eee; padding-bottom: 4px;
+    font-size: 10px;
+    font-weight: bold;
+    color: var(--modal-text-dim); /* #999999 */
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--modal-border);
+    padding-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
-.recent-list { display: flex; flex-direction: column; gap: 2px; }
+
+/* リストコンテナ */
+.recent-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+/* 各ファイル項目 */
 .recent-item {
-    padding: 4px 6px; font-size: 10.5px; cursor: pointer; border-radius: 3px;
-    color: #444; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    padding: 6px 8px;
+    font-size: 11px;
+    cursor: pointer;
+    border-radius: 4px;
+    color: var(--modal-text-main); /* #eeeeee */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: all 0.2s ease;
 }
-.recent-item:hover { background: #f0f4f8; color: var(--primary-blue); }
+
+/* ホバー時：メモのタグやボタンと同じ馴染むデザイン */
+.recent-item:hover {
+    background: var(--modal-hover-bg);
+    color: var(--modal-accent); /* 馴染む水色 #3498db */
+}
+
+/* 空の状態などのメッセージ用 */
+.recent-empty {
+    font-size: 10px;
+    color: var(--modal-text-dim);
+    text-align: center;
+    padding: 10px 0;
+}
+
+
 
 /* --- プログレス・メッセージエリア --- */
 #progress-container {
@@ -173,6 +214,7 @@
 
 
 /* --- モーダル部品 --- */
+
 .modal-overlay {
     position: fixed;
     top: 0; left: 0; width: 100%; height: 100%;
@@ -182,23 +224,86 @@
     -webkit-backdrop-filter: blur(2px);
     backdrop-filter: blur(2px);
 }
+
 .modal-content {
-    background: #fff; padding: 20px; border-radius: 10px; width: 340px;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.5); text-align: center;
+    background: var(--modal-bg);
+    padding: 20px;
+    border-radius: 8px;
+    width: 320px;
+    border: 1px solid var(--modal-border);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+    text-align: center;
     animation: modal-pop 0.3s ease-out;
-    color: #111;
+    color: var(--modal-text-main);
 }
+
 @keyframes modal-pop {
     from { transform: scale(0.9); opacity: 0; }
     to { transform: scale(1); opacity: 1; }
 }
+
 .path-display {
-    font-size: 10px; background: #e9ecef; padding: 8px; border-radius: 4px;
-    border: 1px solid #ccc; margin: 12px 0; text-align: left; font-family: monospace; word-break: break-all;
-    color: #111;
+    font-size: 10px;
+    background: #111;
+    padding: 10px;
+    border-radius: 4px;
+    border: 1px solid #444;
+    margin: 12px 0;
+    text-align: left;
+    font-family: monospace;
+    word-break: break-all;
+    color: var(--modal-text-main);
 }
-.modal-buttons { display: flex; flex-direction: column; gap: 8px; }
-.modal-btn { padding: 10px; border: none; border-radius: 5px; cursor: pointer; font-weight: 800; font-size: 12px; color: white; }
-.modal-btn.primary { background: var(--primary-blue); }
-.modal-btn.secondary { background: var(--success-green); }
-.modal-btn.cancel { background: #6c757d; }
+
+.modal-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+/* --- ボタンデザイン：メモの質感に完全統合 --- */
+
+.modal-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 12px;
+    transition: all 0.2s;
+    outline: none;
+}
+
+/* メインボタン：メモの primary と同じ馴染む水色 */
+.modal-btn.primary {
+    background: var(--modal-accent);
+    color: white;
+}
+.modal-btn.primary:hover {
+    background: #2980b9;
+}
+
+/* セカンダリボタン：メモのタグのような馴染むデザイン */
+.modal-btn.secondary {
+    background: #2c3e50;
+    color: var(--modal-accent);
+    border: 1px solid #34495e;
+}
+.modal-btn.secondary:hover {
+    background: var(--modal-accent);
+    color: white;
+    border-color: #5dade2;
+}
+
+/* キャンセルボタン：メモの secondary（枠線のみ） */
+.modal-btn.cancel {
+    background: transparent;
+    color: var(--modal-text-dim);
+    border: 1px solid #444;
+}
+.modal-btn.cancel:hover {
+    background: var(--modal-hover-bg);
+    color: var(--modal-text-main);
+    border-color: #666;
+}

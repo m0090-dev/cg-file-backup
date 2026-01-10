@@ -63,6 +63,14 @@ export function showFloatingError(text) {
 
 export function renderRecentFiles() {
   const list = document.getElementById('recent-list');
+  const section = document.getElementById('recent-files-section')
+  let titleEl = document.querySelector('.recent-title');
+  if(!titleEl) {
+    titleEl = document.createElement('div');
+    titleEl.className = 'recent-title';
+    section.insertBefore(titleEl,list);
+  }
+  titleEl.textContent = i18n?.recentFilesTitle || "RECENT FILES";  
   if (!list) return;
   if (recentFiles.length === 0) {
     list.innerHTML = `<span class="recent-empty">No recent files</span>`;
